@@ -1,0 +1,28 @@
+# Node
+node_modules/
+npm-debug.log
+yarn.lock
+
+# React
+build/
+.env
+
+# Fabric artifacts
+wallet/
+*.tar.gz
+log.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Fabric runtime data (never commit)
+fabric-samples/test-network/organizations/
+fabric-samples/test-network/system-genesis-block/
+fabric-samples/test-network/channel-artifacts/
+fabric-samples/test-network/ledgerdata/
+
