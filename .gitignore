@@ -26,3 +26,5 @@ fabric-samples/test-network/system-genesis-block/
 fabric-samples/test-network/channel-artifacts/
 fabric-samples/test-network/ledgerdata/
 
+# Go vendor
+vendor/
