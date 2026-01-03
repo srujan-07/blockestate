@@ -25,7 +25,7 @@ async function getContract(identityName = 'admin') {
   wallet,
   identity: identityName,
   discovery: {
-    enabled: true
+    enabled: false
   }
 });
 
