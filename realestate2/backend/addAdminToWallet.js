@@ -6,8 +6,19 @@ async function main() {
   const walletPath = path.join(__dirname, 'wallet');
   const wallet = await Wallets.newFileSystemWallet(walletPath);
 
-  const mspPath =
-    '/mnt/c/Users/sruja/OneDrive/Desktop/Project/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp';
+  const mspPath = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    'fabric-samples',
+    'test-network',
+    'organizations',
+    'peerOrganizations',
+    'org1.example.com',
+    'users',
+    'Admin@org1.example.com',
+    'msp'
+  );
 
   const signcertsPath = path.join(mspPath, 'signcerts');
   const keystorePath = path.join(mspPath, 'keystore');

@@ -5,7 +5,19 @@ const { Wallets } = require('fabric-network');
 async function addUser(username) {
   const wallet = await Wallets.newFileSystemWallet(path.join(__dirname, 'wallet'));
 
-  const mspPath = `/mnt/c/Users/sruja/OneDrive/Desktop/Project/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/${username}@org1.example.com/msp`;
+  const mspPath = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    'fabric-samples',
+    'test-network',
+    'organizations',
+    'peerOrganizations',
+    'org1.example.com',
+    'users',
+    `${username}@org1.example.com`,
+    'msp'
+  );
 
   const certPath = path.join(mspPath, 'signcerts');
   const keyPath = path.join(mspPath, 'keystore');

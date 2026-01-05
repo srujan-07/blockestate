@@ -28,3 +28,12 @@ fabric-samples/test-network/ledgerdata/
 
 # Go vendor
 vendor/
+# Python venv
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/

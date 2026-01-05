@@ -25,7 +25,8 @@ async function getContract(identityName = 'admin') {
   wallet,
   identity: identityName,
   discovery: {
-    enabled: false
+    enabled: true,
+    asLocalhost: true
   }
 });
 

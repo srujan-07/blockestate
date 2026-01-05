@@ -6,141 +6,184 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-/**
- * Register a person on blockchain
- */
-app.post('/register', async (req, res) => {
-  try {
-    const { name } = req.body;
-    const { contract, gateway } = await getContract('admin');
+// Enable Fabric blockchain mode (set to false to use static data)
+const USE_FABRIC = true;
 
-    const result = await contract.submitTransaction(
-  'RegisterPerson',
-  name
-);
-
-app.post('/citizen/register', async (req, res) => {
-  try {
-    const { name } = req.body;
-
-    const { contract, gateway } = await getContract('citizen1');
-    const result = await contract.submitTransaction('RegisterPerson', name);
-
-    await gateway.disconnect();
-    res.json(JSON.parse(result.toString()));
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+// Static sample land records for demo/fallback
+const staticLands = [
+  {
+    propertyId: 'PROP-1001',
+    surveyNo: '123/A',
+    district: 'Hyderabad',
+    mandal: 'Ghatkesar',
+    village: 'Boduppal',
+    owner: 'Ravi Kumar',
+    area: '240 sq.yds',
+    landType: 'Residential',
+    marketValue: '₹ 45,00,000',
+    lastUpdated: '2026-01-02',
+    transactionId: 'tx-abc-001',
+    blockNumber: 11,
+    ipfsCID: 'bafybeigdyrmockcid0001'
+  },
+  {
+    propertyId: 'PROP-2002',
+    surveyNo: '45/B',
+    district: 'Nalgonda',
+    mandal: 'Choutuppal',
+    village: 'Chityal',
+    owner: 'Suma Reddy',
+    area: '1.5 acres',
+    landType: 'Agricultural',
+    marketValue: '₹ 62,00,000',
+    lastUpdated: '2025-12-28',
+    transactionId: 'tx-abc-002',
+    blockNumber: 19,
+    ipfsCID: 'bafybeigdyrmockcid0002'
+  },
+  {
+    propertyId: 'PROP-3003',
+    surveyNo: '78/C',
+    district: 'Warangal',
+    mandal: 'Kazipet',
+    village: 'Fathima Nagar',
+    owner: 'Arjun Varma',
+    area: '360 sq.yds',
+    landType: 'Residential',
+    marketValue: '₹ 55,00,000',
+    lastUpdated: '2025-12-15',
+    transactionId: 'tx-abc-003',
+    blockNumber: 24,
+    ipfsCID: 'bafybeigdyrmockcid0003'
+  },
+  {
+    propertyId: 'PROP-4004',
+    surveyNo: '12/D',
+    district: 'Karimnagar',
+    mandal: 'Huzurabad',
+    village: 'Kamalapur',
+    owner: 'Meena Chowdary',
+    area: '600 sq.yds',
+    landType: 'Residential',
+    marketValue: '₹ 68,00,000',
+    lastUpdated: '2025-11-05',
+    transactionId: 'tx-abc-004',
+    blockNumber: 31,
+    ipfsCID: 'bafybeigdyrmockcid0004'
   }
-});
+];
 
-app.post('/citizen/apply-land', async (req, res) => {
-  try {
-    const { appId, docHash } = req.body;
+const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
-    const { contract, gateway } = await getContract('citizen1');
-    await contract.submitTransaction('SubmitLandApplication', appId, docHash);
-
-    await gateway.disconnect();
-    res.json({ message: 'Land application submitted' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+app.post('/land/query-by-survey', async (req, res) => {
+  const { district, mandal, village, surveyNo } = req.body || {};
+  
+  // Validate all required fields
+  if (!district || !district.trim()) {
+    return res.status(400).json({ error: 'District is required' });
   }
-});
-
-app.post('/tahsildar/approve', async (req, res) => {
-  try {
-    const { appId } = req.body;
-
-    const { contract, gateway } = await getContract('tahsildar1');
-    await contract.submitTransaction('ApproveByTahsildar', appId);
-
-    await gateway.disconnect();
-    res.json({ message: 'Approved by Tahsildar' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  if (!mandal || !mandal.trim()) {
+    return res.status(400).json({ error: 'Mandal is required' });
   }
-});
-
-app.post('/registrar/mint', async (req, res) => {
-  try {
-    const { tokenId, ownerId } = req.body;
-
-    const { contract, gateway } = await getContract('registrar1');
-    await contract.submitTransaction('MintLandToken', tokenId, ownerId);
-
-    await gateway.disconnect();
-    res.json({ message: 'Land token minted' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  if (!village || !village.trim()) {
+    return res.status(400).json({ error: 'Village is required' });
   }
-});
-
-async function getContract(identityName) {
-  const gateway = new Gateway();
-  await gateway.connect(ccp, {
-    wallet,
-    identity: identityName,
-    discovery: { enabled: false }
-  });
-
-  const network = await gateway.getNetwork('mychannel');
-  const contract = network.getContract('landregistry');
-
-  return { contract, gateway };
-}
-
-
-
-    await gateway.disconnect();
-    res.json(JSON.parse(result.toString()));
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (!surveyNo || !surveyNo.trim()) {
+    return res.status(400).json({ error: 'Survey Number is required' });
   }
-});
+  
+  console.log(`[QUERY] Searching: district=${district}, mandal=${mandal}, village=${village}, surveyNo=${surveyNo}`);
+  
+  if (USE_FABRIC) {
+    try {
+      const { contract, gateway } = await getContract('admin');
+      const result = await contract.evaluateTransaction(
+        'QueryLandBySurvey',
+        district,
+        mandal,
+        village,
+        surveyNo
+      );
+      await gateway.disconnect();
 
-/**
- * Submit land application (document hash)
- */
-app.post('/land/apply', async (req, res) => {
-  try {
-    const { appId, docHash } = req.body;
-    const { contract, gateway } = await getContract('admin');
+      if (!result || result.length === 0) {
+        console.log(`[NOT FOUND] No record from blockchain`);
+        return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
+      }
 
-    await contract.submitTransaction(
-      'SubmitLandApplication',
-      appId,
-      docHash
+      const landRecord = JSON.parse(result.toString());
+      console.log(`[FOUND] Record from blockchain:`, landRecord);
+      res.json(landRecord);
+    } catch (error) {
+      console.error('[ERROR] Blockchain query failed:', error);
+      return res.status(500).json({ error: error.message || 'Blockchain query failed' });
+    }
+  } else {
+    // Fallback to static data
+    const match = staticLands.find(
+      (r) => eq(r.district, district) && eq(r.mandal, mandal) && eq(r.village, village) && eq(r.surveyNo, surveyNo)
     );
-
-    await gateway.disconnect();
-    res.json({ message: 'Land application submitted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    
+    if (!match) {
+      console.log(`[NOT FOUND] No matching static record`);
+      return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
+    }
+    
+    console.log(`[FOUND] Static record: ${match.propertyId}`);
+    res.json(match);
   }
 });
 
-/**
- * Mint land token (Registrar only)
- */
-app.post('/land/mint', async (req, res) => {
-  try {
-    const { tokenId, ownerId } = req.body;
-    const { contract, gateway } = await getContract('admin');
+app.post('/land/query-by-id', async (req, res) => {
+  const { propertyId } = req.body || {};
+  
+  // Validate required field
+  if (!propertyId || !propertyId.trim()) {
+    return res.status(400).json({ error: 'Property ID is required' });
+  }
+  
+  console.log(`[QUERY] Searching by ID: propertyId=${propertyId}`);
+  
+  if (USE_FABRIC) {
+    try {
+      const { contract, gateway } = await getContract('admin');
+      const result = await contract.evaluateTransaction(
+        'ReadLandRecord',
+        propertyId
+      );
+      await gateway.disconnect();
 
-    await contract.submitTransaction(
-      'MintLandToken',
-      tokenId,
-      ownerId
-    );
+      if (!result || result.length === 0) {
+        console.log(`[NOT FOUND] No record from blockchain`);
+        return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
+      }
 
-    await gateway.disconnect();
-    res.json({ message: 'Land token minted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+      const landRecord = JSON.parse(result.toString());
+      console.log(`[FOUND] Record from blockchain:`, landRecord);
+      res.json(landRecord);
+    } catch (error) {
+      console.error('[ERROR] Blockchain query failed:', error);
+      return res.status(500).json({ error: error.message || 'Blockchain query failed' });
+    }
+  } else {
+    // Fallback to static data
+    const match = staticLands.find((r) => eq(r.propertyId, propertyId));
+    
+    if (!match) {
+      console.log(`[NOT FOUND] No matching static record for propertyId=${propertyId}`);
+      return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
+    }
+    
+    console.log(`[FOUND] Static record: ${match.propertyId}`);
+    res.json(match);
   }
 });
 
-app.listen(4000, () => {
-  console.log('Backend running on port 4000');
+app.get('/health', (_req, res) => res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'static' }));
+
+const PORT = 4000;
+app.listen(PORT, () => {
+  console.log(`Backend running on port ${PORT}`);
+  console.log(`Mode: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '📁 Static Data'}`);
 });
 
