@@ -7,7 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 // Enable Fabric blockchain mode (set to false to use static data)
-const USE_FABRIC = true;
+const USE_FABRIC = false;
 
 // Static sample land records for demo/fallback
 const staticLands = [
