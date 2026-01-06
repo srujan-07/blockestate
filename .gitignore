@@ -2,8 +2,10 @@
 node_modules/
 npm-debug.log
 yarn.lock
-frontend-app/
-realestate2/backend/frontend-app/
+frontend-app/node_modules/
+frontend-app/build/
+realestate2/backend/frontend-app/node_modules/
+realestate2/backend/frontend-app/build/
 
 # React
 build/
