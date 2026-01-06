@@ -14,7 +14,7 @@ export default function LandSearch() {
   const [captchaInput, setCaptchaInput] = useState("");
   const [captcha, setCaptcha] = useState("ZXA24");
 
-  const HYPERLEDGER_API = "http://localhost:3001/api";
+  const HYPERLEDGER_API = "http://localhost:4000";
   const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
   const refreshCaptcha = () => {

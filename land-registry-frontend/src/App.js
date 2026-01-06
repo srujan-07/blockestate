@@ -17,7 +17,7 @@ export default function LandSearch() {
   const [captcha, setCaptcha] = useState("ZXA24");
 
   // Hyperledger Fabric Configuration
-  const HYPERLEDGER_API = "http://localhost:3001/api"; // Your Fabric REST API endpoint
+  const HYPERLEDGER_API = "http://localhost:4000"; // Your backend API endpoint
   
   // IPFS Configuration
   const IPFS_GATEWAY = "https://ipfs.io/ipfs/"; // Public gateway or your own node
