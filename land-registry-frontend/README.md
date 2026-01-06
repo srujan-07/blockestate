@@ -1,70 +1,185 @@
-# Getting Started with Create React App
+# Land Registry System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A blockchain-based Land Registry System built with React, Express.js, Hyperledger Fabric, and IPFS.
+
+## Features
+
+- 🔍 Search land records by Survey Number or Unique Property ID
+- ⛓️ Blockchain-based data storage using Hyperledger Fabric
+- 📁 IPFS integration for document and media storage
+- 🔒 Secure and immutable land records
+- 🎨 Modern, responsive UI
+
+## Prerequisites
+
+Before running this application, you need to install:
+
+1. **Node.js** (v16 or later)
+   - Download from [nodejs.org](https://nodejs.org/)
+   - Verify installation: `node --version` and `npm --version`
+
+2. **IPFS Node**
+   - Download from [ipfs.io/install](https://ipfs.io/install/)
+   - After installation:
+     ```bash
+     ipfs init
+     ipfs daemon
+     ```
+   - Must run on `localhost:5001` (default port)
+
+3. **Hyperledger Fabric Network**
+   - Set up a Hyperledger Fabric test network
+   - Deploy the `landregistry.js` smart contract
+   - Create `connection-org1.json` configuration file in the root directory
+   - Set up wallet with `appUser` identity
+
+## Installation
+
+1. **Clone the repository** (if not already done)
+   ```bash
+   cd realestate2
+   ```
+
+2. **Install npm packages**
+   ```bash
+   npm install
+   ```
+
+   This will install:
+   - React and React DOM
+   - Express.js backend
+   - Hyperledger Fabric SDK
+   - IPFS client
+   - Build tools and dependencies
+
+## Configuration
+
+### Hyperledger Fabric Setup
+
+1. You need a `connection-org1.json` file in the root directory with your Fabric network configuration.
+
+2. Set up wallet with user identity:
+   - Create a `wallet` directory (will be created automatically)
+   - Ensure `appUser` identity exists in the wallet
+   - Run enrollment scripts if needed
+
+### IPFS Configuration
+
+The application expects IPFS to be running on `localhost:5001`. If your IPFS node runs on a different port, update the configuration in `server.js`:
+
+```javascript
+const ipfs = create({
+  host: 'localhost',
+  port: 5001,  // Change if needed
+  protocol: 'http'
+});
+```
+
+## Running the Application
+
+### Option 1: Run Frontend and Backend Separately
+
+**Terminal 1 - Start Backend Server:**
+```bash
+npm run server
+```
+Backend runs on `http://localhost:3001`
+
+**Terminal 2 - Start React Frontend:**
+```bash
+npm start
+```
+Frontend runs on `http://localhost:3000`
+
+### Option 2: Run Both Together (Recommended)
+
+```bash
+npm run dev
+```
+
+This starts both the backend server and React frontend simultaneously using `concurrently`.
+
+## Project Structure
+
+```
+realestate2/
+├── public/
+│   ├── index.html          # HTML entry point
+│   └── manifest.json       # PWA manifest
+├── src/                    # (Will be created on build)
+├── App.js                  # Main React component
+├── App.css                 # App styles
+├── index.js                # React entry point
+├── index.css               # Global styles
+├── server.js               # Express backend server
+├── landregistry.js         # Hyperledger Fabric smart contract
+├── package.json            # Dependencies and scripts
+└── README.md               # This file
+```
 
 ## Available Scripts
 
-In the project directory, you can run:
+- `npm start` - Start React development server (port 3000)
+- `npm run server` - Start Express backend server (port 3001)
+- `npm run dev` - Start both frontend and backend simultaneously
+- `npm run build` - Build React app for production
+- `npm test` - Run tests
 
-### `npm start`
+## API Endpoints
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+The backend server provides the following endpoints:
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- `POST /api/land/register` - Register a new land record
+- `POST /api/land/query-by-survey` - Query land by survey number
+- `POST /api/land/query-by-id` - Query land by property ID
+- `PUT /api/land/update` - Update land record
+- `GET /api/land/history/:propertyId` - Get transaction history
+- `GET /api/ipfs/:cid` - Fetch data from IPFS
+- `GET /health` - Health check endpoint
 
-### `npm test`
+## Troubleshooting
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Port Already in Use
 
-### `npm run build`
+If port 3000 or 3001 is already in use:
+- Change the port in `server.js` (backend)
+- React will automatically suggest using a different port (frontend)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### IPFS Connection Error
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Ensure IPFS daemon is running: `ipfs daemon`
+- Check if IPFS is accessible on port 5001
+- Verify firewall settings
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Hyperledger Fabric Errors
 
-### `npm run eject`
+- Ensure Fabric network is running
+- Verify `connection-org1.json` exists and is correctly configured
+- Check wallet directory and user identity setup
+- Ensure smart contract is deployed on the network
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Missing Dependencies
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+If you encounter module errors:
+```bash
+npm install
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## Technology Stack
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+- **Frontend**: React 18, CSS3
+- **Backend**: Express.js, Node.js
+- **Blockchain**: Hyperledger Fabric 2.2
+- **Storage**: IPFS (InterPlanetary File System)
+- **Build Tool**: Create React App (react-scripts)
 
-## Learn More
+## License
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+ISC
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Notes
 
-### Code Splitting
+- This application requires a running Hyperledger Fabric network and IPFS node
+- For development/testing, you may need to set up a local Fabric test network
+- The application includes mock data fallback for demonstration purposes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
