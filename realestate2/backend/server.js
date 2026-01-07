@@ -6,8 +6,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Enable Fabric blockchain mode (set to false to use static data)
-const USE_FABRIC = false;
+// Enable Fabric blockchain mode via env (fallback to false)
+const USE_FABRIC = String(process.env.USE_FABRIC || '').toLowerCase() === 'true' || process.env.USE_FABRIC === '1';
 
 // Static sample land records for demo/fallback
 const staticLands = [
@@ -108,15 +108,23 @@ app.post('/land/query-by-survey', async (req, res) => {
 
       if (!result || result.length === 0) {
         console.log(`[NOT FOUND] No record from blockchain`);
-        return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
+        return res.status(404).json({ error: 'Record not found' });
       }
 
       const landRecord = JSON.parse(result.toString());
+      
+      // Validate all fields match (case-insensitive)
+      if (!eq(landRecord.district, district) || !eq(landRecord.mandal, mandal) || 
+          !eq(landRecord.village, village) || !eq(landRecord.surveyNo, surveyNo)) {
+        console.log(`[MISMATCH] Fields do not match. Expected: ${district}/${mandal}/${village}/${surveyNo}, Got: ${landRecord.district}/${landRecord.mandal}/${landRecord.village}/${landRecord.surveyNo}`);
+        return res.status(404).json({ error: 'Record not found' });
+      }
+      
       console.log(`[FOUND] Record from blockchain:`, landRecord);
       res.json(landRecord);
     } catch (error) {
-      console.error('[ERROR] Blockchain query failed:', error);
-      return res.status(500).json({ error: error.message || 'Blockchain query failed' });
+      console.error('[ERROR] Blockchain query failed:', error.message);
+      return res.status(404).json({ error: 'Record not found' });
     }
   } else {
     // Fallback to static data
@@ -155,15 +163,22 @@ app.post('/land/query-by-id', async (req, res) => {
 
       if (!result || result.length === 0) {
         console.log(`[NOT FOUND] No record from blockchain`);
-        return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
+        return res.status(404).json({ error: 'Record not found' });
       }
 
       const landRecord = JSON.parse(result.toString());
+      
+      // Validate Property ID matches (case-insensitive)
+      if (!eq(landRecord.propertyId, propertyId)) {
+        console.log(`[MISMATCH] Property ID does not match. Expected: ${propertyId}, Got: ${landRecord.propertyId}`);
+        return res.status(404).json({ error: 'Record not found' });
+      }
+      
       console.log(`[FOUND] Record from blockchain:`, landRecord);
       res.json(landRecord);
     } catch (error) {
-      console.error('[ERROR] Blockchain query failed:', error);
-      return res.status(500).json({ error: error.message || 'Blockchain query failed' });
+      console.error('[ERROR] Blockchain query failed:', error.message);
+      return res.status(404).json({ error: 'Record not found' });
     }
   } else {
     // Fallback to static data

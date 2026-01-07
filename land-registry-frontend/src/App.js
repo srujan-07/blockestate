@@ -32,6 +32,7 @@ export default function LandSearch() {
     setCaptchaInput("");
   };
 
+
   // Fetch data from IPFS using CID
   const fetchFromIPFS = async (ipfsCID) => {
     try {
@@ -119,6 +120,15 @@ export default function LandSearch() {
         // Query Hyperledger Fabric
         const blockchainData = await queryHyperledger(surveyNo, "survey");
         
+        // Validate all fields match (case-insensitive)
+        const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+        if (!eq(blockchainData.district, district) || 
+            !eq(blockchainData.mandal, mandal) || 
+            !eq(blockchainData.village, village) || 
+            !eq(blockchainData.surveyNo, surveyNo)) {
+          throw new Error("Record not found");
+        }
+        
         // Blockchain returns metadata + IPFS CID for documents
         const onChainData = {
           owner: blockchainData.owner,
@@ -158,6 +168,12 @@ export default function LandSearch() {
         // Query Hyperledger Fabric by unique ID
         const blockchainData = await queryHyperledger(uniqueId.toUpperCase(), "unique");
         
+        // Validate Property ID matches (case-insensitive)
+        const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+        if (!eq(blockchainData.propertyId, uniqueId)) {
+          throw new Error("Record not found");
+        }
+        
         const onChainData = {
           owner: blockchainData.owner,
           surveyNo: blockchainData.surveyNo,
@@ -190,35 +206,6 @@ export default function LandSearch() {
       setCaptchaInput("");
     } catch (err) {
       setError(err.message || "An error occurred while fetching data.");
-      
-      // Fallback to mock data for demonstration
-      console.log("Using mock data for demonstration...");
-      if (searchType === "survey" && surveyNo === "123/A") {
-        setLandData({
-          owner: "Ravi Kumar",
-          surveyNo: "123/A",
-          mandal: "Ghatkesar",
-          district: "Medchal",
-          village: "Edulabad",
-          area: "2.5 Acres",
-          landType: "Agricultural",
-          marketValue: "₹ 45,00,000",
-          lastUpdated: "15 Nov 2024",
-        });
-      } else if (searchType === "unique" && uniqueId.toUpperCase() === "LND-TAH-LK9F1V-5G2V1G9QW8Z3N4P") {
-        setLandData({
-          owner: "Lakshmi Reddy",
-          surveyNo: "321/D",
-          mandal: "Shamirpet",
-          district: "Medchal",
-          village: "Turkapally",
-          area: "3.2 Acres",
-          landType: "Commercial",
-          marketValue: "₹ 1,50,00,000",
-          lastUpdated: "28 Nov 2024",
-          uniqueId: "LND-TAH-LK9F1V-5G2V1G9QW8Z3N4P",
-        });
-      }
     } finally {
       setLoading(false);
     }
@@ -446,8 +433,8 @@ export default function LandSearch() {
 
         {/* ERROR MESSAGE */}
         {error && (
-          <div >
-             {}
+          <div className="mt-8 p-4 rounded-xl bg-red-100 border border-red-300 text-red-700 font-semibold">
+            {error}
           </div>
         )}
 

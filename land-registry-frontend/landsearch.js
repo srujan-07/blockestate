@@ -87,6 +87,16 @@ export default function LandSearch() {
         }
 
         const blockchainData = await queryHyperledger(surveyNo, "survey");
+        // Strict post-fetch validation: ensure every provided field matches
+        const eq = (a, b) => String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+        if (!eq(blockchainData?.district, district)
+          || !eq(blockchainData?.mandal, mandal)
+          || !eq(blockchainData?.village, village)
+          || !eq(blockchainData?.surveyNo, surveyNo)) {
+          setError("Land record not found. Please verify all details.");
+          setLoading(false);
+          return;
+        }
         let offChainData = {};
 
         if (blockchainData.ipfsCID) {

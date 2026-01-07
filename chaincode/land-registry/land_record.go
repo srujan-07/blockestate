@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -109,6 +110,11 @@ func (c *LandRegistryContract) QueryLandBySurvey(
 	}
 	defer resultsIterator.Close()
 
+	// Helper function for case-insensitive string comparison
+	eq := func(a, b string) bool {
+		return strings.ToLower(strings.TrimSpace(a)) == strings.ToLower(strings.TrimSpace(b))
+	}
+
 	for resultsIterator.HasNext() {
 		queryResponse, err := resultsIterator.Next()
 		if err != nil {
@@ -122,10 +128,10 @@ func (c *LandRegistryContract) QueryLandBySurvey(
 		}
 
 		// Check if all fields match (case-insensitive)
-		if landRecord.District == district &&
-			landRecord.Mandal == mandal &&
-			landRecord.Village == village &&
-			landRecord.SurveyNo == surveyNo {
+		if eq(landRecord.District, district) &&
+			eq(landRecord.Mandal, mandal) &&
+			eq(landRecord.Village, village) &&
+			eq(landRecord.SurveyNo, surveyNo) {
 			return &landRecord, nil
 		}
 	}
