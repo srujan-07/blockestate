@@ -188,6 +188,9 @@ app.post('/land/query-by-id', async (req, res) => {
 
 // Debug endpoint: Get all available records from Supabase
 app.get('/land/all', async (req, res) => {
+  if (USE_FABRIC) {
+    return res.status(501).json({ error: 'Listing all records is disabled in Fabric mode. Query by survey or property ID instead.' });
+  }
   try {
     const records = await allQuery({});
     
@@ -217,11 +220,14 @@ app.get('/land/all', async (req, res) => {
 });
 
 app.get('/health', async (_req, res) => {
+  if (USE_FABRIC) {
+    return res.json({ ok: true, mode: 'blockchain', database: 'skipped (Fabric mode)' });
+  }
   try {
     await allQuery({});
-    res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'Supabase', database: 'connected' });
+    res.json({ ok: true, mode: 'Supabase', database: 'connected' });
   } catch (error) {
-    res.status(500).json({ ok: false, error: 'Database connection failed', mode: USE_FABRIC ? 'blockchain' : 'Supabase' });
+    res.status(500).json({ ok: false, error: 'Database connection failed', mode: 'Supabase' });
   }
 });
 
@@ -230,13 +236,21 @@ const PORT = process.env.PORT || 4000;
 // Initialize database and start server
 (async () => {
   try {
-    await initializeDatabase();
-    await seedDatabase();
+    if (USE_FABRIC) {
+      console.log('⏭️  Supabase initialization skipped (Fabric mode enabled)');
+    } else {
+      await initializeDatabase();
+      await seedDatabase();
+    }
     
     app.listen(PORT, () => {
       console.log(`✅ Backend running on port ${PORT}`);
       console.log(`📊 Storage: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '☁️  Supabase (PostgreSQL)'}`);
-      console.log(`🔗 Visit http://localhost:${PORT}/land/all to see all records`);
+      if (USE_FABRIC) {
+        console.log(`🔍 Query endpoints: POST /land/query-by-survey, POST /land/query-by-id`);
+      } else {
+        console.log(`🔗 Visit http://localhost:${PORT}/land/all to see all records`);
+      }
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);

@@ -4,14 +4,21 @@ require('dotenv').config({ path: '../.env' });
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('SUPABASE_URL and SUPABASE_KEY must be set in .env file');
-}
+let supabase = null;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+if (supabaseUrl && supabaseKey) {
+  try {
+    supabase = createClient(supabaseUrl, supabaseKey);
+  } catch (error) {
+    console.warn('⚠️ Supabase initialization failed:', error.message);
+  }
+}
 
 // Query helpers for Supabase
 const getQuery = async (filters = {}) => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
   let query = supabase.from('land_records').select('*');
   
   for (const [key, value] of Object.entries(filters)) {
@@ -25,6 +32,9 @@ const getQuery = async (filters = {}) => {
 };
 
 const allQuery = async (filters = {}) => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
   let query = supabase.from('land_records').select('*');
   
   for (const [key, value] of Object.entries(filters)) {
@@ -38,6 +48,9 @@ const allQuery = async (filters = {}) => {
 };
 
 const insertQuery = async (data) => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
   const { data: result, error } = await supabase
     .from('land_records')
     .insert([data])
@@ -48,6 +61,9 @@ const insertQuery = async (data) => {
 };
 
 const updateQuery = async (id, data) => {
+  if (!supabase) {
+    throw new Error('Supabase is not initialized');
+  }
   const { data: result, error } = await supabase
     .from('land_records')
     .update(data)
@@ -61,6 +77,10 @@ const updateQuery = async (id, data) => {
 // Initialize database (test connection)
 async function initializeDatabase() {
   try {
+    if (!supabase) {
+      console.log('⚠️ Supabase not configured, skipping initialization');
+      return false;
+    }
     // Test connection
     const { data, error } = await supabase.from('land_records').select('*').limit(1);
     if (error && error.code !== 'PGRST116') {
@@ -77,6 +97,10 @@ async function initializeDatabase() {
 // Seed database with sample data if empty
 async function seedDatabase() {
   try {
+    if (!supabase) {
+      console.log('⚠️ Supabase not configured, skipping seeding');
+      return false;
+    }
     const { count, error: countError } = await supabase
       .from('land_records')
       .select('id', { count: 'exact' });
