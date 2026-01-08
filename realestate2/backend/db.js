@@ -1,40 +1,70 @@
-const { Pool } = require('pg');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
 require('dotenv').config();
 
-// PostgreSQL connection pool
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'land_registry'
+// SQLite database connection
+const dbPath = path.join(__dirname, '..', 'land_registry.db');
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('❌ Database connection error:', err.message);
+  } else {
+    console.log('✅ Connected to SQLite database');
+  }
 });
+
+// Promisify database operations
+const runQuery = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function(err) {
+      if (err) reject(err);
+      else resolve(this);
+    });
+  });
+};
+
+const allQuery = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => {
+      if (err) reject(err);
+      else resolve(rows);
+    });
+  });
+};
+
+const getQuery = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => {
+      if (err) reject(err);
+      else resolve(row);
+    });
+  });
+};
 
 // Initialize database tables
 async function initializeDatabase() {
   try {
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS land_records (
-        id SERIAL PRIMARY KEY,
-        property_id VARCHAR(50) UNIQUE NOT NULL,
-        survey_no VARCHAR(50) NOT NULL,
-        district VARCHAR(100) NOT NULL,
-        mandal VARCHAR(100) NOT NULL,
-        village VARCHAR(100) NOT NULL,
-        owner VARCHAR(100) NOT NULL,
-        area VARCHAR(100) NOT NULL,
-        land_type VARCHAR(50) NOT NULL,
-        market_value VARCHAR(100) NOT NULL,
-        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        transaction_id VARCHAR(100),
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        property_id TEXT UNIQUE NOT NULL,
+        survey_no TEXT NOT NULL,
+        district TEXT NOT NULL,
+        mandal TEXT NOT NULL,
+        village TEXT NOT NULL,
+        owner TEXT NOT NULL,
+        area TEXT NOT NULL,
+        land_type TEXT NOT NULL,
+        market_value TEXT NOT NULL,
+        last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
+        transaction_id TEXT,
         block_number INTEGER,
-        ipfs_cid VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ipfs_cid TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `;
 
-    await pool.query(createTableQuery);
+    await runQuery(createTableQuery);
     console.log('✅ Database tables initialized');
   } catch (error) {
     console.error('❌ Database initialization error:', error.message);
@@ -44,9 +74,9 @@ async function initializeDatabase() {
 // Add sample data if table is empty
 async function seedDatabase() {
   try {
-    const countResult = await pool.query('SELECT COUNT(*) FROM land_records');
+    const countResult = await getQuery('SELECT COUNT(*) as count FROM land_records');
     
-    if (parseInt(countResult.rows[0].count) === 0) {
+    if (countResult.count === 0) {
       const sampleRecords = [
         {
           property_id: 'PROP-1001',
@@ -107,9 +137,9 @@ async function seedDatabase() {
       ];
 
       for (const record of sampleRecords) {
-        await pool.query(
+        await runQuery(
           `INSERT INTO land_records (property_id, survey_no, district, mandal, village, owner, area, land_type, market_value, transaction_id, block_number, ipfs_cid)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             record.property_id,
             record.survey_no,
@@ -134,7 +164,10 @@ async function seedDatabase() {
 }
 
 module.exports = {
-  pool,
+  db,
+  runQuery,
+  allQuery,
+  getQuery,
   initializeDatabase,
   seedDatabase
 };

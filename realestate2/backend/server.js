@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { getContract } = require('./fabric');
-const { pool, initializeDatabase, seedDatabase } = require('./db');
+const { db, allQuery, getQuery, initializeDatabase, seedDatabase } = require('./db');
 
 const app = express();
 app.use(cors());
@@ -128,31 +128,31 @@ app.post('/land/query-by-survey', async (req, res) => {
       return res.status(404).json({ error: 'Record not found' });
     }
   } else {
-    // Query from PostgreSQL
+    // Query from SQLite
     try {
       const query = `
-        SELECT id, property_id as "propertyId", survey_no as "surveyNo", district, mandal, village, 
-               owner, area, land_type as "landType", market_value as "marketValue", 
-               last_updated as "lastUpdated", transaction_id as "transactionId", 
-               block_number as "blockNumber", ipfs_cid as "ipfsCID"
+        SELECT id, property_id as propertyId, survey_no as surveyNo, district, mandal, village, 
+               owner, area, land_type as landType, market_value as marketValue, 
+               last_updated as lastUpdated, transaction_id as transactionId, 
+               block_number as blockNumber, ipfs_cid as ipfsCID
         FROM land_records
-        WHERE LOWER(district) = LOWER($1) 
-        AND LOWER(mandal) = LOWER($2) 
-        AND LOWER(village) = LOWER($3) 
-        AND LOWER(survey_no) = LOWER($4)
+        WHERE LOWER(district) = LOWER(?) 
+        AND LOWER(mandal) = LOWER(?) 
+        AND LOWER(village) = LOWER(?) 
+        AND LOWER(survey_no) = LOWER(?)
       `;
       
-      const result = await pool.query(query, [district, mandal, village, surveyNo]);
+      const result = await getQuery(query, [district, mandal, village, surveyNo]);
       
-      if (result.rows.length === 0) {
-        console.log(`[NOT FOUND] No matching record in PostgreSQL`);
+      if (!result) {
+        console.log(`[NOT FOUND] No matching record in database`);
         return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
       }
       
-      console.log(`[FOUND] PostgreSQL record: ${result.rows[0].propertyId}`);
-      res.json(result.rows[0]);
+      console.log(`[FOUND] Database record: ${result.propertyId}`);
+      res.json(result);
     } catch (error) {
-      console.error('[ERROR] PostgreSQL query failed:', error.message);
+      console.error('[ERROR] Database query failed:', error.message);
       return res.status(500).json({ error: 'Database error: ' + error.message });
     }
   }
@@ -197,49 +197,49 @@ app.post('/land/query-by-id', async (req, res) => {
       return res.status(404).json({ error: 'Record not found' });
     }
   } else {
-    // Query from PostgreSQL
+    // Query from SQLite
     try {
       const query = `
-        SELECT id, property_id as "propertyId", survey_no as "surveyNo", district, mandal, village,
-               owner, area, land_type as "landType", market_value as "marketValue",
-               last_updated as "lastUpdated", transaction_id as "transactionId",
-               block_number as "blockNumber", ipfs_cid as "ipfsCID"
+        SELECT id, property_id as propertyId, survey_no as surveyNo, district, mandal, village,
+               owner, area, land_type as landType, market_value as marketValue,
+               last_updated as lastUpdated, transaction_id as transactionId,
+               block_number as blockNumber, ipfs_cid as ipfsCID
         FROM land_records
-        WHERE LOWER(property_id) = LOWER($1)
+        WHERE LOWER(property_id) = LOWER(?)
       `;
       
-      const result = await pool.query(query, [propertyId]);
+      const result = await getQuery(query, [propertyId]);
       
-      if (result.rows.length === 0) {
+      if (!result) {
         console.log(`[NOT FOUND] No matching record for propertyId=${propertyId}`);
         return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
       }
       
-      console.log(`[FOUND] PostgreSQL record: ${result.rows[0].propertyId}`);
-      res.json(result.rows[0]);
+      console.log(`[FOUND] Database record: ${result.propertyId}`);
+      res.json(result);
     } catch (error) {
-      console.error('[ERROR] PostgreSQL query failed:', error.message);
+      console.error('[ERROR] Database query failed:', error.message);
       return res.status(500).json({ error: 'Database error: ' + error.message });
     }
   }
 });
 
-// Debug endpoint: Get all available records from PostgreSQL
+// Debug endpoint: Get all available records from SQLite
 app.get('/land/all', async (req, res) => {
   try {
     const query = `
-      SELECT id, property_id as "propertyId", survey_no as "surveyNo", district, mandal, village,
-             owner, area, land_type as "landType", market_value as "marketValue"
+      SELECT id, property_id as propertyId, survey_no as surveyNo, district, mandal, village,
+             owner, area, land_type as landType, market_value as marketValue
       FROM land_records
       ORDER BY property_id
     `;
     
-    const result = await pool.query(query);
+    const result = await allQuery(query);
     
     res.json({
-      mode: USE_FABRIC ? 'blockchain' : 'PostgreSQL',
-      totalRecords: result.rows.length,
-      records: result.rows
+      mode: USE_FABRIC ? 'blockchain' : 'SQLite',
+      totalRecords: result.length,
+      records: result
     });
   } catch (error) {
     console.error('[ERROR] Failed to fetch all records:', error.message);
@@ -249,10 +249,10 @@ app.get('/land/all', async (req, res) => {
 
 app.get('/health', async (_req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'PostgreSQL', database: 'connected' });
+    await getQuery('SELECT 1');
+    res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'SQLite', database: 'connected' });
   } catch (error) {
-    res.status(500).json({ ok: false, error: 'Database connection failed', mode: USE_FABRIC ? 'blockchain' : 'PostgreSQL' });
+    res.status(500).json({ ok: false, error: 'Database connection failed', mode: USE_FABRIC ? 'blockchain' : 'SQLite' });
   }
 });
 
@@ -266,7 +266,8 @@ const PORT = process.env.PORT || 4000;
     
     app.listen(PORT, () => {
       console.log(`✅ Backend running on port ${PORT}`);
-      console.log(`📊 Storage: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '🗄️ PostgreSQL Database'}`);
+      console.log(`📊 Storage: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '🗄️  SQLite Database'}`);
+      console.log(`🔗 Visit http://localhost:${PORT}/land/all to see all records`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
