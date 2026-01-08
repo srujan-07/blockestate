@@ -194,6 +194,22 @@ app.post('/land/query-by-id', async (req, res) => {
   }
 });
 
+// Debug endpoint: Get all available records
+app.get('/land/all', (req, res) => {
+  res.json({
+    mode: USE_FABRIC ? 'blockchain' : 'static',
+    totalRecords: staticLands.length,
+    records: staticLands.map(r => ({
+      propertyId: r.propertyId,
+      surveyNo: r.surveyNo,
+      district: r.district,
+      mandal: r.mandal,
+      village: r.village,
+      owner: r.owner
+    }))
+  });
+});
+
 app.get('/health', (_req, res) => res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'static' }));
 
 const PORT = 4000;
