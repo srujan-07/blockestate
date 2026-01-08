@@ -315,6 +315,7 @@ export default function LandSearch() {
                   <option value="Kothur">Kothur</option>
                   <option value="Turkapally">Turkapally</option>
                   <option value="Madhapur">Madhapur</option>
+                  <option value="Boduppal">Boduppal</option>
                 </select>
               </div>
             </div>
