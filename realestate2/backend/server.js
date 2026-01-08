@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { getContract } = require('./fabric');
+const { pool, initializeDatabase, seedDatabase } = require('./db');
 
 const app = express();
 app.use(cors());
@@ -9,7 +10,7 @@ app.use(express.json());
 // Enable Fabric blockchain mode via env (fallback to false)
 const USE_FABRIC = String(process.env.USE_FABRIC || '').toLowerCase() === 'true' || process.env.USE_FABRIC === '1';
 
-// Static sample land records for demo/fallback
+// Static sample land records for fallback only
 const staticLands = [
   {
     propertyId: 'PROP-1001',
@@ -116,7 +117,7 @@ app.post('/land/query-by-survey', async (req, res) => {
       // Validate all fields match (case-insensitive)
       if (!eq(landRecord.district, district) || !eq(landRecord.mandal, mandal) || 
           !eq(landRecord.village, village) || !eq(landRecord.surveyNo, surveyNo)) {
-        console.log(`[MISMATCH] Fields do not match. Expected: ${district}/${mandal}/${village}/${surveyNo}, Got: ${landRecord.district}/${landRecord.mandal}/${landRecord.village}/${landRecord.surveyNo}`);
+        console.log(`[MISMATCH] Fields do not match.`);
         return res.status(404).json({ error: 'Record not found' });
       }
       
@@ -127,18 +128,33 @@ app.post('/land/query-by-survey', async (req, res) => {
       return res.status(404).json({ error: 'Record not found' });
     }
   } else {
-    // Fallback to static data
-    const match = staticLands.find(
-      (r) => eq(r.district, district) && eq(r.mandal, mandal) && eq(r.village, village) && eq(r.surveyNo, surveyNo)
-    );
-    
-    if (!match) {
-      console.log(`[NOT FOUND] No matching static record`);
-      return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
+    // Query from PostgreSQL
+    try {
+      const query = `
+        SELECT id, property_id as "propertyId", survey_no as "surveyNo", district, mandal, village, 
+               owner, area, land_type as "landType", market_value as "marketValue", 
+               last_updated as "lastUpdated", transaction_id as "transactionId", 
+               block_number as "blockNumber", ipfs_cid as "ipfsCID"
+        FROM land_records
+        WHERE LOWER(district) = LOWER($1) 
+        AND LOWER(mandal) = LOWER($2) 
+        AND LOWER(village) = LOWER($3) 
+        AND LOWER(survey_no) = LOWER($4)
+      `;
+      
+      const result = await pool.query(query, [district, mandal, village, surveyNo]);
+      
+      if (result.rows.length === 0) {
+        console.log(`[NOT FOUND] No matching record in PostgreSQL`);
+        return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
+      }
+      
+      console.log(`[FOUND] PostgreSQL record: ${result.rows[0].propertyId}`);
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('[ERROR] PostgreSQL query failed:', error.message);
+      return res.status(500).json({ error: 'Database error: ' + error.message });
     }
-    
-    console.log(`[FOUND] Static record: ${match.propertyId}`);
-    res.json(match);
   }
 });
 
@@ -170,7 +186,7 @@ app.post('/land/query-by-id', async (req, res) => {
       
       // Validate Property ID matches (case-insensitive)
       if (!eq(landRecord.propertyId, propertyId)) {
-        console.log(`[MISMATCH] Property ID does not match. Expected: ${propertyId}, Got: ${landRecord.propertyId}`);
+        console.log(`[MISMATCH] Property ID does not match`);
         return res.status(404).json({ error: 'Record not found' });
       }
       
@@ -181,40 +197,80 @@ app.post('/land/query-by-id', async (req, res) => {
       return res.status(404).json({ error: 'Record not found' });
     }
   } else {
-    // Fallback to static data
-    const match = staticLands.find((r) => eq(r.propertyId, propertyId));
-    
-    if (!match) {
-      console.log(`[NOT FOUND] No matching static record for propertyId=${propertyId}`);
-      return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
+    // Query from PostgreSQL
+    try {
+      const query = `
+        SELECT id, property_id as "propertyId", survey_no as "surveyNo", district, mandal, village,
+               owner, area, land_type as "landType", market_value as "marketValue",
+               last_updated as "lastUpdated", transaction_id as "transactionId",
+               block_number as "blockNumber", ipfs_cid as "ipfsCID"
+        FROM land_records
+        WHERE LOWER(property_id) = LOWER($1)
+      `;
+      
+      const result = await pool.query(query, [propertyId]);
+      
+      if (result.rows.length === 0) {
+        console.log(`[NOT FOUND] No matching record for propertyId=${propertyId}`);
+        return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
+      }
+      
+      console.log(`[FOUND] PostgreSQL record: ${result.rows[0].propertyId}`);
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('[ERROR] PostgreSQL query failed:', error.message);
+      return res.status(500).json({ error: 'Database error: ' + error.message });
     }
-    
-    console.log(`[FOUND] Static record: ${match.propertyId}`);
-    res.json(match);
   }
 });
 
-// Debug endpoint: Get all available records
-app.get('/land/all', (req, res) => {
-  res.json({
-    mode: USE_FABRIC ? 'blockchain' : 'static',
-    totalRecords: staticLands.length,
-    records: staticLands.map(r => ({
-      propertyId: r.propertyId,
-      surveyNo: r.surveyNo,
-      district: r.district,
-      mandal: r.mandal,
-      village: r.village,
-      owner: r.owner
-    }))
-  });
+// Debug endpoint: Get all available records from PostgreSQL
+app.get('/land/all', async (req, res) => {
+  try {
+    const query = `
+      SELECT id, property_id as "propertyId", survey_no as "surveyNo", district, mandal, village,
+             owner, area, land_type as "landType", market_value as "marketValue"
+      FROM land_records
+      ORDER BY property_id
+    `;
+    
+    const result = await pool.query(query);
+    
+    res.json({
+      mode: USE_FABRIC ? 'blockchain' : 'PostgreSQL',
+      totalRecords: result.rows.length,
+      records: result.rows
+    });
+  } catch (error) {
+    console.error('[ERROR] Failed to fetch all records:', error.message);
+    res.status(500).json({ error: 'Database error: ' + error.message });
+  }
 });
 
-app.get('/health', (_req, res) => res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'static' }));
-
-const PORT = 4000;
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
-  console.log(`Mode: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '📁 Static Data'}`);
+app.get('/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'PostgreSQL', database: 'connected' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: 'Database connection failed', mode: USE_FABRIC ? 'blockchain' : 'PostgreSQL' });
+  }
 });
+
+const PORT = process.env.PORT || 4000;
+
+// Initialize database and start server
+(async () => {
+  try {
+    await initializeDatabase();
+    await seedDatabase();
+    
+    app.listen(PORT, () => {
+      console.log(`✅ Backend running on port ${PORT}`);
+      console.log(`📊 Storage: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '🗄️ PostgreSQL Database'}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
+  }
+})();
 

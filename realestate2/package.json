@@ -12,8 +12,10 @@
   "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "fabric-network": "^2.2.20",
-    "js-yaml": "^4.1.1"
+    "js-yaml": "^4.1.1",
+    "pg": "^8.16.3"
   }
 }
