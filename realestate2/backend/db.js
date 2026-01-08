@@ -1,83 +1,90 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '../.env' });
 
-// SQLite database connection
-const dbPath = path.join(__dirname, '..', 'land_registry.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Database connection error:', err.message);
-  } else {
-    console.log('✅ Connected to SQLite database');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('SUPABASE_URL and SUPABASE_KEY must be set in .env file');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Query helpers for Supabase
+const getQuery = async (filters = {}) => {
+  let query = supabase.from('land_records').select('*');
+  
+  for (const [key, value] of Object.entries(filters)) {
+    query = query.eq(key, value);
   }
-});
-
-// Promisify database operations
-const runQuery = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function(err) {
-      if (err) reject(err);
-      else resolve(this);
-    });
-  });
+  
+  const { data, error } = await query.single();
+  
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
 };
 
-const allQuery = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
+const allQuery = async (filters = {}) => {
+  let query = supabase.from('land_records').select('*');
+  
+  for (const [key, value] of Object.entries(filters)) {
+    query = query.eq(key, value);
+  }
+  
+  const { data, error } = await query;
+  
+  if (error) throw error;
+  return data || [];
 };
 
-const getQuery = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, row) => {
-      if (err) reject(err);
-      else resolve(row);
-    });
-  });
+const insertQuery = async (data) => {
+  const { data: result, error } = await supabase
+    .from('land_records')
+    .insert([data])
+    .select();
+  
+  if (error) throw error;
+  return result?.[0];
 };
 
-// Initialize database tables
+const updateQuery = async (id, data) => {
+  const { data: result, error } = await supabase
+    .from('land_records')
+    .update(data)
+    .eq('id', id)
+    .select();
+  
+  if (error) throw error;
+  return result?.[0];
+};
+
+// Initialize database (test connection)
 async function initializeDatabase() {
   try {
-    const createTableQuery = `
-      CREATE TABLE IF NOT EXISTS land_records (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        property_id TEXT UNIQUE NOT NULL,
-        survey_no TEXT NOT NULL,
-        district TEXT NOT NULL,
-        mandal TEXT NOT NULL,
-        village TEXT NOT NULL,
-        owner TEXT NOT NULL,
-        area TEXT NOT NULL,
-        land_type TEXT NOT NULL,
-        market_value TEXT NOT NULL,
-        last_updated TEXT DEFAULT CURRENT_TIMESTAMP,
-        transaction_id TEXT,
-        block_number INTEGER,
-        ipfs_cid TEXT,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-        updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-
-    await runQuery(createTableQuery);
-    console.log('✅ Database tables initialized');
+    // Test connection
+    const { data, error } = await supabase.from('land_records').select('*').limit(1);
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+    console.log('✅ Connected to Supabase');
+    return true;
   } catch (error) {
-    console.error('❌ Database initialization error:', error.message);
+    console.error('❌ Supabase connection error:', error.message);
+    return false;
   }
 }
 
-// Add sample data if table is empty
+// Seed database with sample data if empty
 async function seedDatabase() {
   try {
-    const countResult = await getQuery('SELECT COUNT(*) as count FROM land_records');
+    const { count, error: countError } = await supabase
+      .from('land_records')
+      .select('id', { count: 'exact' });
     
-    if (countResult.count === 0) {
-      const sampleRecords = [
+    if (countError) throw countError;
+    
+    if (count === 0) {
+      const sampleData = [
         {
           property_id: 'PROP-1001',
           survey_no: '123/A',
@@ -135,39 +142,25 @@ async function seedDatabase() {
           ipfs_cid: 'bafybeigdyrmockcid0004'
         }
       ];
-
-      for (const record of sampleRecords) {
-        await runQuery(
-          `INSERT INTO land_records (property_id, survey_no, district, mandal, village, owner, area, land_type, market_value, transaction_id, block_number, ipfs_cid)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            record.property_id,
-            record.survey_no,
-            record.district,
-            record.mandal,
-            record.village,
-            record.owner,
-            record.area,
-            record.land_type,
-            record.market_value,
-            record.transaction_id,
-            record.block_number,
-            record.ipfs_cid
-          ]
-        );
-      }
+      
+      const { error: insertError } = await supabase
+        .from('land_records')
+        .insert(sampleData);
+      
+      if (insertError) throw insertError;
       console.log('✅ Sample data seeded to database');
     }
   } catch (error) {
-    console.error('❌ Database seeding error:', error.message);
+    console.error('❌ Seeding error:', error.message);
   }
 }
 
 module.exports = {
-  db,
-  runQuery,
-  allQuery,
+  supabase,
   getQuery,
+  allQuery,
+  insertQuery,
+  updateQuery,
   initializeDatabase,
   seedDatabase
 };

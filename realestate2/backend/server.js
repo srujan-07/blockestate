@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const { getContract } = require('./fabric');
-const { db, allQuery, getQuery, initializeDatabase, seedDatabase } = require('./db');
+const { allQuery, initializeDatabase, seedDatabase } = require('./db');
 
 const app = express();
 app.use(cors());
@@ -9,70 +9,6 @@ app.use(express.json());
 
 // Enable Fabric blockchain mode via env (fallback to false)
 const USE_FABRIC = String(process.env.USE_FABRIC || '').toLowerCase() === 'true' || process.env.USE_FABRIC === '1';
-
-// Static sample land records for fallback only
-const staticLands = [
-  {
-    propertyId: 'PROP-1001',
-    surveyNo: '123/A',
-    district: 'Hyderabad',
-    mandal: 'Ghatkesar',
-    village: 'Boduppal',
-    owner: 'Ravi Kumar',
-    area: '240 sq.yds',
-    landType: 'Residential',
-    marketValue: '₹ 45,00,000',
-    lastUpdated: '2026-01-02',
-    transactionId: 'tx-abc-001',
-    blockNumber: 11,
-    ipfsCID: 'bafybeigdyrmockcid0001'
-  },
-  {
-    propertyId: 'PROP-2002',
-    surveyNo: '45/B',
-    district: 'Nalgonda',
-    mandal: 'Choutuppal',
-    village: 'Chityal',
-    owner: 'Suma Reddy',
-    area: '1.5 acres',
-    landType: 'Agricultural',
-    marketValue: '₹ 62,00,000',
-    lastUpdated: '2025-12-28',
-    transactionId: 'tx-abc-002',
-    blockNumber: 19,
-    ipfsCID: 'bafybeigdyrmockcid0002'
-  },
-  {
-    propertyId: 'PROP-3003',
-    surveyNo: '78/C',
-    district: 'Warangal',
-    mandal: 'Kazipet',
-    village: 'Fathima Nagar',
-    owner: 'Arjun Varma',
-    area: '360 sq.yds',
-    landType: 'Residential',
-    marketValue: '₹ 55,00,000',
-    lastUpdated: '2025-12-15',
-    transactionId: 'tx-abc-003',
-    blockNumber: 24,
-    ipfsCID: 'bafybeigdyrmockcid0003'
-  },
-  {
-    propertyId: 'PROP-4004',
-    surveyNo: '12/D',
-    district: 'Karimnagar',
-    mandal: 'Huzurabad',
-    village: 'Kamalapur',
-    owner: 'Meena Chowdary',
-    area: '600 sq.yds',
-    landType: 'Residential',
-    marketValue: '₹ 68,00,000',
-    lastUpdated: '2025-11-05',
-    transactionId: 'tx-abc-004',
-    blockNumber: 31,
-    ipfsCID: 'bafybeigdyrmockcid0004'
-  }
-];
 
 const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 
@@ -128,29 +64,42 @@ app.post('/land/query-by-survey', async (req, res) => {
       return res.status(404).json({ error: 'Record not found' });
     }
   } else {
-    // Query from SQLite
+    // Query from Supabase
     try {
-      const query = `
-        SELECT id, property_id as propertyId, survey_no as surveyNo, district, mandal, village, 
-               owner, area, land_type as landType, market_value as marketValue, 
-               last_updated as lastUpdated, transaction_id as transactionId, 
-               block_number as blockNumber, ipfs_cid as ipfsCID
-        FROM land_records
-        WHERE LOWER(district) = LOWER(?) 
-        AND LOWER(mandal) = LOWER(?) 
-        AND LOWER(village) = LOWER(?) 
-        AND LOWER(survey_no) = LOWER(?)
-      `;
+      const records = await allQuery({});
       
-      const result = await getQuery(query, [district, mandal, village, surveyNo]);
+      const result = records.find(record => 
+        eq(record.district, district) && 
+        eq(record.mandal, mandal) && 
+        eq(record.village, village) && 
+        eq(record.survey_no, surveyNo)
+      );
       
       if (!result) {
         console.log(`[NOT FOUND] No matching record in database`);
         return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
       }
       
-      console.log(`[FOUND] Database record: ${result.propertyId}`);
-      res.json(result);
+      // Transform to camelCase for API response
+      const response = {
+        id: result.id,
+        propertyId: result.property_id,
+        surveyNo: result.survey_no,
+        district: result.district,
+        mandal: result.mandal,
+        village: result.village,
+        owner: result.owner,
+        area: result.area,
+        landType: result.land_type,
+        marketValue: result.market_value,
+        lastUpdated: result.last_updated,
+        transactionId: result.transaction_id,
+        blockNumber: result.block_number,
+        ipfsCID: result.ipfs_cid
+      };
+      
+      console.log(`[FOUND] Database record: ${response.propertyId}`);
+      res.json(response);
     } catch (error) {
       console.error('[ERROR] Database query failed:', error.message);
       return res.status(500).json({ error: 'Database error: ' + error.message });
@@ -197,26 +146,39 @@ app.post('/land/query-by-id', async (req, res) => {
       return res.status(404).json({ error: 'Record not found' });
     }
   } else {
-    // Query from SQLite
+    // Query from Supabase
     try {
-      const query = `
-        SELECT id, property_id as propertyId, survey_no as surveyNo, district, mandal, village,
-               owner, area, land_type as landType, market_value as marketValue,
-               last_updated as lastUpdated, transaction_id as transactionId,
-               block_number as blockNumber, ipfs_cid as ipfsCID
-        FROM land_records
-        WHERE LOWER(property_id) = LOWER(?)
-      `;
+      const records = await allQuery({});
       
-      const result = await getQuery(query, [propertyId]);
+      const result = records.find(record => 
+        eq(record.property_id, propertyId)
+      );
       
       if (!result) {
         console.log(`[NOT FOUND] No matching record for propertyId=${propertyId}`);
         return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
       }
       
-      console.log(`[FOUND] Database record: ${result.propertyId}`);
-      res.json(result);
+      // Transform to camelCase for API response
+      const response = {
+        id: result.id,
+        propertyId: result.property_id,
+        surveyNo: result.survey_no,
+        district: result.district,
+        mandal: result.mandal,
+        village: result.village,
+        owner: result.owner,
+        area: result.area,
+        landType: result.land_type,
+        marketValue: result.market_value,
+        lastUpdated: result.last_updated,
+        transactionId: result.transaction_id,
+        blockNumber: result.block_number,
+        ipfsCID: result.ipfs_cid
+      };
+      
+      console.log(`[FOUND] Database record: ${response.propertyId}`);
+      res.json(response);
     } catch (error) {
       console.error('[ERROR] Database query failed:', error.message);
       return res.status(500).json({ error: 'Database error: ' + error.message });
@@ -224,22 +186,29 @@ app.post('/land/query-by-id', async (req, res) => {
   }
 });
 
-// Debug endpoint: Get all available records from SQLite
+// Debug endpoint: Get all available records from Supabase
 app.get('/land/all', async (req, res) => {
   try {
-    const query = `
-      SELECT id, property_id as propertyId, survey_no as surveyNo, district, mandal, village,
-             owner, area, land_type as landType, market_value as marketValue
-      FROM land_records
-      ORDER BY property_id
-    `;
+    const records = await allQuery({});
     
-    const result = await allQuery(query);
+    // Transform to camelCase
+    const transformedRecords = records.map(record => ({
+      id: record.id,
+      propertyId: record.property_id,
+      surveyNo: record.survey_no,
+      district: record.district,
+      mandal: record.mandal,
+      village: record.village,
+      owner: record.owner,
+      area: record.area,
+      landType: record.land_type,
+      marketValue: record.market_value
+    }));
     
     res.json({
-      mode: USE_FABRIC ? 'blockchain' : 'SQLite',
-      totalRecords: result.length,
-      records: result
+      mode: USE_FABRIC ? 'blockchain' : 'Supabase',
+      totalRecords: transformedRecords.length,
+      records: transformedRecords
     });
   } catch (error) {
     console.error('[ERROR] Failed to fetch all records:', error.message);
@@ -249,10 +218,10 @@ app.get('/land/all', async (req, res) => {
 
 app.get('/health', async (_req, res) => {
   try {
-    await getQuery('SELECT 1');
-    res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'SQLite', database: 'connected' });
+    await allQuery({});
+    res.json({ ok: true, mode: USE_FABRIC ? 'blockchain' : 'Supabase', database: 'connected' });
   } catch (error) {
-    res.status(500).json({ ok: false, error: 'Database connection failed', mode: USE_FABRIC ? 'blockchain' : 'SQLite' });
+    res.status(500).json({ ok: false, error: 'Database connection failed', mode: USE_FABRIC ? 'blockchain' : 'Supabase' });
   }
 });
 
@@ -266,7 +235,7 @@ const PORT = process.env.PORT || 4000;
     
     app.listen(PORT, () => {
       console.log(`✅ Backend running on port ${PORT}`);
-      console.log(`📊 Storage: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '🗄️  SQLite Database'}`);
+      console.log(`📊 Storage: ${USE_FABRIC ? '🔗 Hyperledger Fabric Blockchain' : '☁️  Supabase (PostgreSQL)'}`);
       console.log(`🔗 Visit http://localhost:${PORT}/land/all to see all records`);
     });
   } catch (error) {
