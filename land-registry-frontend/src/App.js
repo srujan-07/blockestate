@@ -18,9 +18,6 @@ export default function LandSearch() {
 
   // Hyperledger Fabric Configuration
   const HYPERLEDGER_API = "http://localhost:4000"; // Your backend API endpoint
-  
-  // IPFS Configuration
-  const IPFS_GATEWAY = "https://ipfs.io/ipfs/"; // Public gateway or your own node
 
   const refreshCaptcha = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -30,20 +27,6 @@ export default function LandSearch() {
     }
     setCaptcha(newCaptcha);
     setCaptchaInput("");
-  };
-
-
-  // Fetch data from IPFS using CID
-  const fetchFromIPFS = async (ipfsCID) => {
-    try {
-      const response = await fetch(`${IPFS_GATEWAY}${ipfsCID}`);
-      if (!response.ok) throw new Error("Failed to fetch from IPFS");
-      const data = await response.json();
-      return data;
-    } catch (err) {
-      console.error("IPFS fetch error:", err);
-      throw new Error("Unable to retrieve document from IPFS");
-    }
   };
 
   // Query Hyperledger Fabric for land record
@@ -79,7 +62,7 @@ export default function LandSearch() {
         if (response.status === 404) {
           throw new Error("Land record not found");
         }
-        throw new Error("");
+        throw new Error("Error fetching land record");
       }
 
       const data = await response.json();
@@ -129,7 +112,7 @@ export default function LandSearch() {
           throw new Error("Record not found");
         }
         
-        // Blockchain returns metadata + IPFS CID for documents
+        // Blockchain returns land record
         const onChainData = {
           owner: blockchainData.owner,
           surveyNo: blockchainData.surveyNo,
@@ -144,18 +127,7 @@ export default function LandSearch() {
           blockNumber: blockchainData.blockNumber
         };
 
-        // If IPFS CID exists, fetch additional documents
-        if (blockchainData.ipfsCID) {
-          const offChainData = await fetchFromIPFS(blockchainData.ipfsCID);
-          setLandData({
-            ...onChainData,
-            documents: offChainData.documents || [],
-            images: offChainData.images || [],
-            ipfsCID: blockchainData.ipfsCID
-          });
-        } else {
-          setLandData(onChainData);
-        }
+        setLandData(onChainData);
 
       } else {
         // Validate unique ID search
@@ -189,18 +161,7 @@ export default function LandSearch() {
           blockNumber: blockchainData.blockNumber
         };
 
-        // Fetch from IPFS if available
-        if (blockchainData.ipfsCID) {
-          const offChainData = await fetchFromIPFS(blockchainData.ipfsCID);
-          setLandData({
-            ...onChainData,
-            documents: offChainData.documents || [],
-            images: offChainData.images || [],
-            ipfsCID: blockchainData.ipfsCID
-          });
-        } else {
-          setLandData(onChainData);
-        }
+        setLandData(onChainData);
       }
 
       setCaptchaInput("");
@@ -472,66 +433,10 @@ export default function LandSearch() {
               </div>
 
               
-               
             </div>
-
-            {/* IPFS Documents */}
-            {landData.ipfsCID && (
-              <div className="p-8 rounded-3xl bg-white/60 shadow-xl border border-gray-300">
-                <h3 className="text-2xl font-bold text-purple-700 mb-6 flex items-center gap-2">
-                  📁 Documents & Media (Off-Chain - IPFS)
-                </h3>
-
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600">
-                    <strong>IPFS CID: </strong>
-                    <a 
-                      href={`${IPFS_GATEWAY}${landData.ipfsCID}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline font-mono text-xs"
-                    >
-                      {landData.ipfsCID}
-                    </a>
-                  </p>
-                </div>
-
-                {landData.documents && landData.documents.length > 0 && (
-                  <div className="mb-6">
-                    <h4 className="font-bold text-gray-700 mb-3">📄 Documents</h4>
-                    <ul className="space-y-2">
-                      {landData.documents.map((doc, idx) => (
-                        <li key={idx} className="flex items-center gap-2 text-gray-600">
-                          <span className="text-green-600">✓</span>
-                          {doc}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {landData.images && landData.images.length > 0 && (
-                  <div>
-                    <h4 className="font-bold text-gray-700 mb-3">🖼️ Images</h4>
-                    <ul className="space-y-2">
-                      {landData.images.map((img, idx) => (
-                        <li key={idx} className="flex items-center gap-2 text-gray-600">
-                          <span className="text-blue-600">🔗</span>
-                          {img}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
-
-       
-        
-        </div>
       </div>
-  
+    </div>
   );
 }

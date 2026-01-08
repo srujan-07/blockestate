@@ -91,5 +91,5 @@ echo "║   Press Ctrl+C to stop                             ║"
 echo "╚════════════════════════════════════════════════════╝"
 echo ""
 
-export USE_FABRIC="true"
+export USE_FABRIC="false"
 exec node ./server.js

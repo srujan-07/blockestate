@@ -1,22 +1,14 @@
-// server.js - Hyperledger Fabric REST API with IPFS Integration
+// server.js - Hyperledger Fabric REST API
 const express = require('express');
 const cors = require('cors');
 const { Gateway, Wallets } = require('fabric-network');
 const FabricCAServices = require('fabric-ca-client');
 const path = require('path');
 const fs = require('fs');
-const { create } = require('ipfs-http-client');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
-// IPFS Configuration
-const ipfs = create({
-  host: 'localhost',
-  port: 5001,
-  protocol: 'http'
-});
 
 // Hyperledger Fabric Configuration
 const ccpPath = path.resolve(__dirname, 'connection-org1.json');
@@ -45,34 +37,6 @@ async function getContract() {
   return { contract, gateway };
 }
 
-// Helper: Upload to IPFS
-async function uploadToIPFS(data) {
-  try {
-    const result = await ipfs.add(JSON.stringify(data));
-    return result.path; // Returns CID
-  } catch (error) {
-    console.error('IPFS upload error:', error);
-    throw error;
-  }
-}
-
-// Helper: Fetch from IPFS
-async function fetchFromIPFS(cid) {
-  try {
-    const chunks = [];
-    for await (const chunk of ipfs.cat(cid)) {
-      chunks.push(chunk);
-    }
-    const data = Buffer.concat(chunks).toString();
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('IPFS fetch error:', error);
-    throw error;
-  }
-}
-
-// API Routes
-
 // 1. Register Land Record
 app.post('/api/land/register', async (req, res) => {
   try {
@@ -85,14 +49,8 @@ app.post('/api/land/register', async (req, res) => {
       village,
       area,
       landType,
-      marketValue,
-      documents,
-      images
+      marketValue
     } = req.body;
-
-    // Upload documents and images to IPFS
-    const ipfsData = { documents, images };
-    const ipfsCID = await uploadToIPFS(ipfsData);
 
     // Store metadata on Hyperledger
     const { contract, gateway } = await getContract();
@@ -108,7 +66,7 @@ app.post('/api/land/register', async (req, res) => {
       area,
       landType,
       marketValue,
-      ipfsCID
+      ''  // Empty IPFS CID for now
     );
 
     await gateway.disconnect();
@@ -117,7 +75,6 @@ app.post('/api/land/register', async (req, res) => {
       success: true,
       message: 'Land record registered successfully',
       propertyId,
-      ipfsCID,
       transactionId: result.toString()
     });
 
@@ -194,19 +151,7 @@ app.post('/api/land/query-by-id', async (req, res) => {
   }
 });
 
-// 4. Get IPFS Data
-app.get('/api/ipfs/:cid', async (req, res) => {
-  try {
-    const { cid } = req.params;
-    const data = await fetchFromIPFS(cid);
-    res.json(data);
-  } catch (error) {
-    console.error('IPFS fetch error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// 5. Update Land Record
+// 4. Update Land Record
 app.put('/api/land/update', async (req, res) => {
   try {
     const { propertyId, owner, marketValue } = req.body;
@@ -233,7 +178,7 @@ app.put('/api/land/update', async (req, res) => {
   }
 });
 
-// 6. Get Transaction History
+// 5. Get Transaction History
 app.get('/api/land/history/:propertyId', async (req, res) => {
   try {
     const { propertyId } = req.params;
@@ -265,5 +210,4 @@ const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`🚀 Land Registry API running on port ${PORT}`);
   console.log(`📡 Hyperledger Fabric connected`);
-  console.log(`📁 IPFS node connected`);
 });

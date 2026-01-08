@@ -18,7 +18,6 @@ class LandRegistryContract extends Contract {
         area: '2.5 Acres',
         landType: 'Agricultural',
         marketValue: '₹ 45,00,000',
-        ipfsCID: 'QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco',
         lastUpdated: new Date().toISOString()
       },
       {
@@ -31,7 +30,6 @@ class LandRegistryContract extends Contract {
         area: '3.2 Acres',
         landType: 'Commercial',
         marketValue: '₹ 1,50,00,000',
-        ipfsCID: 'QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG',
         lastUpdated: new Date().toISOString()
       }
     ];
@@ -46,7 +44,7 @@ class LandRegistryContract extends Contract {
 
   // Create a new land record
   async CreateLandRecord(ctx, propertyId, owner, surveyNo, district, mandal, 
-                         village, area, landType, marketValue, ipfsCID) {
+                         village, area, landType, marketValue) {
     
     // Check if property already exists
     const exists = await this.LandRecordExists(ctx, propertyId);
@@ -64,7 +62,6 @@ class LandRegistryContract extends Contract {
       area,
       landType,
       marketValue,
-      ipfsCID,
       lastUpdated: new Date().toISOString()
     };
 

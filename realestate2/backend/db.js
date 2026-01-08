@@ -120,8 +120,7 @@ async function seedDatabase() {
           land_type: 'Residential',
           market_value: '₹ 45,00,000',
           transaction_id: 'tx-abc-001',
-          block_number: 11,
-          ipfs_cid: 'bafybeigdyrmockcid0001'
+          block_number: 11
         },
         {
           property_id: 'PROP-2002',
@@ -134,8 +133,7 @@ async function seedDatabase() {
           land_type: 'Agricultural',
           market_value: '₹ 62,00,000',
           transaction_id: 'tx-abc-002',
-          block_number: 19,
-          ipfs_cid: 'bafybeigdyrmockcid0002'
+          block_number: 19
         },
         {
           property_id: 'PROP-3003',
@@ -148,8 +146,7 @@ async function seedDatabase() {
           land_type: 'Residential',
           market_value: '₹ 55,00,000',
           transaction_id: 'tx-abc-003',
-          block_number: 24,
-          ipfs_cid: 'bafybeigdyrmockcid0003'
+          block_number: 24
         },
         {
           property_id: 'PROP-4004',
@@ -162,8 +159,7 @@ async function seedDatabase() {
           land_type: 'Residential',
           market_value: '₹ 68,00,000',
           transaction_id: 'tx-abc-004',
-          block_number: 31,
-          ipfs_cid: 'bafybeigdyrmockcid0004'
+          block_number: 31
         }
       ];
       

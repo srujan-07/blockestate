@@ -1,13 +1,12 @@
 # Land Registry System
 
-A blockchain-based Land Registry System built with React, Express.js, Hyperledger Fabric, and IPFS.
+A blockchain-based Land Registry System built with React, Express.js, Hyperledger Fabric, and Supabase.
 
 ## Features
 
 - 🔍 Search land records by Survey Number or Unique Property ID
 - ⛓️ Blockchain-based data storage using Hyperledger Fabric
-- 📁 IPFS integration for document and media storage
-- 🔒 Secure and immutable land records
+-  Secure and immutable land records
 - 🎨 Modern, responsive UI
 
 ## Prerequisites

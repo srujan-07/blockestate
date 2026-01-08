@@ -15,8 +15,7 @@ async function addSampleRecords() {
         village: 'Boduppal',
         area: '240 sq.yds',
         landType: 'Residential',
-        marketValue: '₹ 45,00,000',
-        ipfsCID: 'bafybeigdyrmockcid0001'
+        marketValue: '₹ 45,00,000'
       },
       {
         propertyId: 'PROP-2002',
@@ -27,8 +26,7 @@ async function addSampleRecords() {
         village: 'Chityal',
         area: '1.5 acres',
         landType: 'Agricultural',
-        marketValue: '₹ 62,00,000',
-        ipfsCID: 'bafybeigdyrmockcid0002'
+        marketValue: '₹ 62,00,000'
       },
       {
         propertyId: 'PROP-3003',
@@ -39,8 +37,7 @@ async function addSampleRecords() {
         village: 'Fathima Nagar',
         area: '360 sq.yds',
         landType: 'Residential',
-        marketValue: '₹ 55,00,000',
-        ipfsCID: 'bafybeigdyrmockcid0003'
+        marketValue: '₹ 55,00,000'
       }
     ];
 
@@ -57,7 +54,7 @@ async function addSampleRecords() {
           record.area,
           record.landType,
           record.marketValue,
-          record.ipfsCID
+          ''  // Empty IPFS CID
         );
         console.log(`✅ Created: ${record.propertyId} - ${record.district}/${record.mandal}/${record.village}/${record.surveyNo}`);
       } catch (error) {

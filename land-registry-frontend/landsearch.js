@@ -15,7 +15,6 @@ export default function LandSearch() {
   const [captcha, setCaptcha] = useState("ZXA24");
 
   const HYPERLEDGER_API = "http://localhost:4000";
-  const IPFS_GATEWAY = "https://ipfs.io/ipfs/";
 
   const refreshCaptcha = () => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -25,17 +24,6 @@ export default function LandSearch() {
     }
     setCaptcha(newCaptcha);
     setCaptchaInput("");
-  };
-
-  const fetchFromIPFS = async (ipfsCID) => {
-    try {
-      const response = await fetch(`${IPFS_GATEWAY}${ipfsCID}`);
-      if (!response.ok) throw new Error("Failed to fetch from IPFS");
-      return await response.json();
-    } catch (err) {
-      console.error(err);
-      throw new Error("Unable to retrieve document from IPFS");
-    }
   };
 
   const queryHyperledger = async (queryKey, queryType) => {
@@ -57,7 +45,10 @@ export default function LandSearch() {
         body: JSON.stringify(body),
       });
 
-      if (!response.ok) throw new Error("Land record not found");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Land record not found");
+      }
 
       return await response.json();
     } catch (err) {
@@ -97,13 +88,7 @@ export default function LandSearch() {
           setLoading(false);
           return;
         }
-        let offChainData = {};
-
-        if (blockchainData.ipfsCID) {
-          offChainData = await fetchFromIPFS(blockchainData.ipfsCID);
-        }
-
-        setLandData({ ...blockchainData, ...offChainData });
+        setLandData(blockchainData);
       } else {
         if (!uniqueId.trim()) {
           setError("Please enter Unique Property ID.");
@@ -111,14 +96,8 @@ export default function LandSearch() {
           return;
         }
 
-        const blockchainData = await queryHyperledger(uniqueId, "unique");
-        let offChainData = {};
-
-        if (blockchainData.ipfsCID) {
-          offChainData = await fetchFromIPFS(blockchainData.ipfsCID);
-        }
-
-        setLandData({ ...blockchainData, ...offChainData });
+        const blockchainData = await queryHyperledger(uniqueId, "id");
+        setLandData(blockchainData);
       }
     } catch (err) {
       setError(err.message || "Error occurred");
@@ -149,7 +128,7 @@ export default function LandSearch() {
             Land Registry System
           </h1>
           <p className="text-gray-500 mt-2">
-            Powered by Hyperledger Fabric + IPFS
+            Hyperledger Fabric Blockchain + Supabase
           </p>
         </div>
 
