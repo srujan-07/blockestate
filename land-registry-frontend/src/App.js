@@ -4,6 +4,8 @@ import './App.css';
 export default function LandSearch() {
   const [searchType, setSearchType] = useState("survey");
   const [landData, setLandData] = useState(null);
+  const [allProperties, setAllProperties] = useState([]);
+  const [showAllProperties, setShowAllProperties] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   
@@ -70,6 +72,27 @@ export default function LandSearch() {
     } catch (err) {
       console.error("Hyperledger query error:", err);
       throw err;
+    }
+  };
+
+  // Fetch all properties
+  const fetchAllProperties = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${HYPERLEDGER_API}/land/all`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch all properties");
+      }
+      const data = await response.json();
+      setAllProperties(data.records || []);
+      setShowAllProperties(true);
+      setLandData(null); // Clear single search result
+    } catch (err) {
+      setError(err.message || "Error fetching all properties");
+      console.error("Error fetching all properties:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -174,6 +197,8 @@ export default function LandSearch() {
 
   const handleReset = () => {
     setLandData(null);
+    setAllProperties([]);
+    setShowAllProperties(false);
     setError(null);
     setDistrict("");
     setMandal("");
@@ -191,6 +216,16 @@ export default function LandSearch() {
           🏞️ Land Registry System
         </h2>
 
+        {/* View All Properties Button */}
+        <div className="flex justify-end mb-6">
+          <button
+            onClick={fetchAllProperties}
+            disabled={loading}
+            className="px-6 py-2 rounded-xl bg-purple-600 text-white font-semibold hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            📋 View All Properties
+          </button>
+        </div>
 
         {/* Radio Buttons */}
         <div className="flex justify-center gap-12 mb-10">
@@ -434,6 +469,54 @@ export default function LandSearch() {
 
               
             </div>
+          </div>
+        )}
+
+        {/* ALL PROPERTIES VIEW */}
+        {showAllProperties && allProperties.length > 0 && (
+          <div className="mt-12">
+            <div className="p-8 rounded-3xl bg-white/60 shadow-xl border border-gray-300">
+              <h3 className="text-2xl font-bold text-green-700 mb-6 flex items-center gap-2">
+                📋 All Properties ({allProperties.length})
+              </h3>
+              
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-green-200 text-green-900">
+                      <th className="p-3 border">Property ID</th>
+                      <th className="p-3 border">Owner</th>
+                      <th className="p-3 border">District</th>
+                      <th className="p-3 border">Mandal</th>
+                      <th className="p-3 border">Village</th>
+                      <th className="p-3 border">Survey No</th>
+                      <th className="p-3 border">Area</th>
+                      <th className="p-3 border">Land Type</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allProperties.map((property, index) => (
+                      <tr key={index} className="hover:bg-green-50">
+                        <td className="p-3 border text-sm">{property.propertyId}</td>
+                        <td className="p-3 border">{property.owner}</td>
+                        <td className="p-3 border">{property.district}</td>
+                        <td className="p-3 border">{property.mandal}</td>
+                        <td className="p-3 border">{property.village}</td>
+                        <td className="p-3 border">{property.surveyNo}</td>
+                        <td className="p-3 border">{property.area}</td>
+                        <td className="p-3 border">{property.landType}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showAllProperties && allProperties.length === 0 && !loading && (
+          <div className="mt-8 p-4 rounded-xl bg-yellow-100 border border-yellow-300 text-yellow-700 font-semibold">
+            No properties found in the system.
           </div>
         )}
       </div>

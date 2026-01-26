@@ -33,6 +33,11 @@ print_error() {
 # Step 1: Reset and Start Fabric Network
 print_step "Resetting any existing network (safe cleanup)..."
 cd "$PROJECT_ROOT/fabric-samples/test-network"
+
+# Set up environment for Fabric binaries
+export PATH="$PROJECT_ROOT/fabric-samples/bin:$PATH"
+export FABRIC_CFG_PATH="$PROJECT_ROOT/fabric-samples/config"
+
 bash ./network.sh down > /tmp/fabric_network_down.log 2>&1 || true
 print_status "Cleanup done"
 

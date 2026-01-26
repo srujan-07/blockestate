@@ -2,12 +2,12 @@ const { getContract } = require('./fabric');
 
 async function addSampleRecords() {
   try {
-    const { contract, gateway } = await getContract('admin');
+    const identity = process.env.IDENTITY || 'admin';
+    const { contract, gateway } = await getContract(identity);
 
     // Add multiple sample records
     const records = [
       {
-        propertyId: 'PROP-1001',
         owner: 'Ravi Kumar',
         surveyNo: '123/A',
         district: 'Hyderabad',
@@ -15,10 +15,10 @@ async function addSampleRecords() {
         village: 'Boduppal',
         area: '240 sq.yds',
         landType: 'Residential',
-        marketValue: '₹ 45,00,000'
+        marketValue: '₹ 45,00,000',
+        state: 'Telangana'
       },
       {
-        propertyId: 'PROP-2002',
         owner: 'Suma Reddy',
         surveyNo: '45/B',
         district: 'Nalgonda',
@@ -26,10 +26,10 @@ async function addSampleRecords() {
         village: 'Chityal',
         area: '1.5 acres',
         landType: 'Agricultural',
-        marketValue: '₹ 62,00,000'
+        marketValue: '₹ 62,00,000',
+        state: 'Telangana'
       },
       {
-        propertyId: 'PROP-3003',
         owner: 'Arjun Varma',
         surveyNo: '78/C',
         district: 'Warangal',
@@ -37,15 +37,15 @@ async function addSampleRecords() {
         village: 'Fathima Nagar',
         area: '360 sq.yds',
         landType: 'Residential',
-        marketValue: '₹ 55,00,000'
+        marketValue: '₹ 55,00,000',
+        state: 'Telangana'
       }
     ];
 
     for (const record of records) {
       try {
-        await contract.submitTransaction(
+        const result = await contract.submitTransaction(
           'CreateLandRecord',
-          record.propertyId,
           record.owner,
           record.surveyNo,
           record.district,
@@ -54,9 +54,12 @@ async function addSampleRecords() {
           record.area,
           record.landType,
           record.marketValue,
-          ''  // Empty IPFS CID
+          record.state || 'Telangana',
+          record.ipfsCID || 'N/A'
         );
-        console.log(`✅ Created: ${record.propertyId} - ${record.district}/${record.mandal}/${record.village}/${record.surveyNo}`);
+
+        const created = JSON.parse(result.toString());
+        console.log(`✅ Created: ${created.propertyId} - ${record.district}/${record.mandal}/${record.village}/${record.surveyNo}`);
       } catch (error) {
         if (error.message.includes('already exists')) {
           console.log(`⚠️  Skipped: ${record.propertyId} (already exists)`);
