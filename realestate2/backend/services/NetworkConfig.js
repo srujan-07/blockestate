@@ -11,6 +11,27 @@ class NetworkConfig {
   constructor() {
     // Pre-defined network configurations
     this.networks = {
+      'custom-network': {
+        name: 'custom-network',
+        channel: 'state-ts',
+        chaincode: 'landregistry',
+        organizations: {
+          'cclb': {
+            mspId: 'CCLEBMSP',
+            connectionProfile: './config/connection-cclb.yaml',
+            description: 'Central Land Ledger Board (root authority)',
+            channels: ['cclb-global', 'state-ts']
+          },
+          'state-ts': {
+            mspId: 'StateOrgTSMSP',
+            connectionProfile: './config/connection-state-ts.yaml',
+            description: 'Telangana State Organization',
+            channels: ['cclb-global', 'state-ts']
+          }
+        },
+        discoveryEnabled: false, // Production mode
+        description: 'Custom production-grade Land Registry network (independent of fabric-samples)',
+      },
       'test-network': {
         name: 'test-network',
         channel: 'mychannel',
@@ -19,7 +40,7 @@ class NetworkConfig {
         discoveryEnabled: false, // Production mode
         asLocalhost: false,
         connectionProfile: './config/connection-org1.yaml',
-        description: 'Standard test network (single org)',
+        description: 'Standard test network (single org, uses fabric-samples)',
       },
       'multi-org-network': {
         name: 'multi-org-network',
@@ -45,10 +66,25 @@ class NetworkConfig {
 
     // Pre-defined channel configurations
     this.channels = {
+      'cclb-global': {
+        name: 'cclb-global',
+        chaincode: 'registry-index',
+        description: 'Property ID registry across all states',
+        organizations: ['cclb', 'state-ts'],
+        endorsementPolicy: 'MAJORITY',
+      },
+      'state-ts': {
+        name: 'state-ts',
+        chaincode: 'landregistry',
+        description: 'Telangana state-specific land records',
+        organizations: ['cclb', 'state-ts'],
+        endorsementPolicy: 'MAJORITY',
+      },
       'mychannel': {
         name: 'mychannel',
         chaincode: 'landregistry',
-        endorsementPolicy: 'ANY', // Can be extended
+        description: 'Test network channel (fabric-samples)',
+        endorsementPolicy: 'ANY',
       },
       'land-registry-channel': {
         name: 'land-registry-channel',
@@ -62,9 +98,10 @@ class NetworkConfig {
       },
     };
 
-    // Current active configuration
-    this.activeNetwork = 'test-network';
-    this.activeChannel = 'mychannel';
+    // Current active configuration (default to custom network)
+    this.activeNetwork = 'custom-network';
+    this.activeOrganization = 'cclb'; // For custom-network
+    this.activeChannel = 'state-ts';
   }
 
   /**

@@ -1,0 +1,71 @@
+---
+# Connection profile for StateOrgTS (Telangana State Organization)
+# Used by backend to connect as StateOrgTS admin
+
+name: land-registry-state-ts
+version: 1.0.0
+
+client:
+  organization: StateOrgTS
+  connection:
+    timeout:
+      peer:
+        endorser: 300
+        eventHub: 300
+      orderer: 300
+
+organizations:
+  StateOrgTS:
+    mspid: StateOrgTSMSP
+    peers:
+      - peer0.ts.landregistry.local
+    certificateAuthorities:
+      - ca-ts
+
+peers:
+  peer0.ts.landregistry.local:
+    url: grpcs://localhost:9051
+    tlsCACerts:
+      path: ${FABRIC_CFG_PATH}/../network/crypto-config/peerOrganizations/ts.landregistry.local/peers/peer0.ts.landregistry.local/tls/ca.crt
+    grpcOptions:
+      ssl-target-name-override: peer0.ts.landregistry.local
+      hostnameOverride: peer0.ts.landregistry.local
+
+certificateAuthorities:
+  ca-ts:
+    url: https://localhost:7055
+    caName: ca-ts
+    tlsCACerts:
+      path: ${FABRIC_CFG_PATH}/../network/crypto-config/peerOrganizations/ts.landregistry.local/ca/ca.ts.landregistry.local-cert.pem
+    httpOptions:
+      verify: false
+
+orderers:
+  orderer0.orderer.landregistry.local:
+    url: grpcs://localhost:7050
+    grpcOptions:
+      ssl-target-name-override: orderer0.orderer.landregistry.local
+      hostnameOverride: orderer0.orderer.landregistry.local
+    tlsCACerts:
+      path: ${FABRIC_CFG_PATH}/../network/crypto-config/ordererOrganizations/orderer.landregistry.local/orderers/orderer0.orderer.landregistry.local/tls/ca.crt
+
+channels:
+  cclb-global:
+    orderers:
+      - orderer0.orderer.landregistry.local
+    peers:
+      peer0.ts.landregistry.local:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+  state-ts:
+    orderers:
+      - orderer0.orderer.landregistry.local
+    peers:
+      peer0.ts.landregistry.local:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true

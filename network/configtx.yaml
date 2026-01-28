@@ -1,0 +1,182 @@
+# ConfigTX configuration for Land Registry custom network
+# Defines organizations, consortiums, and channel policies
+
+Organizations:
+  - &OrdererOrg
+    Name: OrdererOrg
+    ID: OrdererMSP
+    MSPDir: crypto-config/ordererOrganizations/orderer.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('OrdererMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('OrdererMSP.admin')"
+
+  - &CCLB
+    Name: CCLB
+    ID: CCLEBMSP
+    MSPDir: crypto-config/peerOrganizations/cclb.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('CCLEBMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('CCLEBMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('CCLEBMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('CCLEBMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.cclb.landregistry.local
+        Port: 7051
+
+  - &StateOrgTS
+    Name: StateOrgTS
+    ID: StateOrgTSMSP
+    MSPDir: crypto-config/peerOrganizations/ts.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('StateOrgTSMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('StateOrgTSMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('StateOrgTSMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('StateOrgTSMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.ts.landregistry.local
+        Port: 7051
+
+Capabilities:
+  Channel: &ChannelCapabilities
+    V2_0: true
+  Orderer: &OrdererCapabilities
+    V2_0: true
+  Application: &ApplicationCapabilities
+    V2_0: true
+
+Application: &ApplicationDefaults
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    Admin:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+    LifecycleEndorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Members"
+    Endorsement:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Members"
+  Capabilities:
+    <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+  OrdererType: etcdraft
+  EtcdRaftOptions:
+    TickInterval: 100ms
+    ElectionTick: 10
+    HeartbeatTick: 1
+    MaxInflightBlocks: 5
+    SnapshotIntervalSize: 16777216
+  Addresses:
+    - orderer0.orderer.landregistry.local:7050
+  BatchTimeout: 2s
+  BatchSize:
+    MaxMessageCount: 500
+    AbsoluteMaxBytes: 10485760
+    PreferredMaxBytes: 2097152
+  Organizations:
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    BlockValidation:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    Admin:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+  Policies:
+    Readers:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    Writers:
+      Type: ImplicitMeta
+      Rule: "ANY Members"
+    Admin:
+      Type: ImplicitMeta
+      Rule: "MAJORITY Admins"
+  Capabilities:
+    <<: *ChannelCapabilities
+
+Consortiums:
+  LandRegistryConsortium:
+    Organizations:
+      - *CCLB
+      - *StateOrgTS
+
+Profiles:
+  LandRegistryOrdererGenesis:
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Consortiums:
+      LandRegistryConsortium:
+        Organizations:
+          - *CCLB
+          - *StateOrgTS
+    Capabilities:
+      <<: *ChannelCapabilities
+
+  # cclb-global channel: property ID registry across all states
+  CCLBGlobalChannel:
+    <<: *ChannelDefaults
+    Consortium: LandRegistryConsortium
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CCLB
+        - *StateOrgTS
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+  # state-ts channel: Telangana state-specific land records
+  StateTSChannel:
+    <<: *ChannelDefaults
+    Consortium: LandRegistryConsortium
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CCLB
+        - *StateOrgTS
+      Capabilities:
+        <<: *ApplicationCapabilities

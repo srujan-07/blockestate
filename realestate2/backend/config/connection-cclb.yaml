@@ -1,0 +1,71 @@
+---
+# Connection profile for CCLB (Central Land Ledger Board)
+# Used by backend to connect as CCLB admin to both channels
+
+name: land-registry-cclb
+version: 1.0.0
+
+client:
+  organization: CCLB
+  connection:
+    timeout:
+      peer:
+        endorser: 300
+        eventHub: 300
+      orderer: 300
+
+organizations:
+  CCLB:
+    mspid: CCLEBMSP
+    peers:
+      - peer0.cclb.landregistry.local
+    certificateAuthorities:
+      - ca-cclb
+
+peers:
+  peer0.cclb.landregistry.local:
+    url: grpcs://localhost:7051
+    tlsCACerts:
+      path: ${FABRIC_CFG_PATH}/../network/crypto-config/peerOrganizations/cclb.landregistry.local/peers/peer0.cclb.landregistry.local/tls/ca.crt
+    grpcOptions:
+      ssl-target-name-override: peer0.cclb.landregistry.local
+      hostnameOverride: peer0.cclb.landregistry.local
+
+certificateAuthorities:
+  ca-cclb:
+    url: https://localhost:7054
+    caName: ca-cclb
+    tlsCACerts:
+      path: ${FABRIC_CFG_PATH}/../network/crypto-config/peerOrganizations/cclb.landregistry.local/ca/ca.cclb.landregistry.local-cert.pem
+    httpOptions:
+      verify: false
+
+orderers:
+  orderer0.orderer.landregistry.local:
+    url: grpcs://localhost:7050
+    grpcOptions:
+      ssl-target-name-override: orderer0.orderer.landregistry.local
+      hostnameOverride: orderer0.orderer.landregistry.local
+    tlsCACerts:
+      path: ${FABRIC_CFG_PATH}/../network/crypto-config/ordererOrganizations/orderer.landregistry.local/orderers/orderer0.orderer.landregistry.local/tls/ca.crt
+
+channels:
+  cclb-global:
+    orderers:
+      - orderer0.orderer.landregistry.local
+    peers:
+      peer0.cclb.landregistry.local:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true
+
+  state-ts:
+    orderers:
+      - orderer0.orderer.landregistry.local
+    peers:
+      peer0.cclb.landregistry.local:
+        endorsingPeer: true
+        chaincodeQuery: true
+        ledgerQuery: true
+        eventSource: true

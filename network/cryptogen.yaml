@@ -1,0 +1,34 @@
+# Cryptogen configuration for custom Land Registry network
+# Generates MSP, TLS, and identity materials for all organizations
+
+OrdererOrgs:
+  - Name: Orderer
+    Domain: orderer.landregistry.local
+    # Multiple orderer nodes for HA (use 1 for dev/test)
+    Specs:
+      - Hostname: orderer0
+      - Hostname: orderer1
+        Disabled: true
+      - Hostname: orderer2
+        Disabled: true
+    Users:
+      - Name: Admin
+
+PeerOrgs:
+  # Central Land Ledger Board - Root Authority
+  - Name: CCLB
+    Domain: cclb.landregistry.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1
+
+  # Telangana State Organization - Example State Org
+  - Name: StateOrgTS
+    Domain: ts.landregistry.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 1

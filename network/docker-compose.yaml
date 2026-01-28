@@ -1,0 +1,228 @@
+version: '3.8'
+
+networks:
+  land-registry-net:
+    driver: bridge
+
+volumes:
+  orderer0.orderer.landregistry.local:
+  peer0.cclb.landregistry.local:
+  peer0.ts.landregistry.local:
+  ca-cclb:
+  ca-ts:
+
+services:
+  # ============================================================================
+  # Orderer Service
+  # ============================================================================
+  orderer0.orderer.landregistry.local:
+    container_name: orderer0.orderer.landregistry.local
+    image: hyperledger/fabric-orderer:latest
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_CLUSTER_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_CLUSTER_LISTENPORT=7051
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_METRICS_PROVIDER=prometheus
+      - ORDERER_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+      - ORDERER_OPERATIONS_TLS_ENABLED=false
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+      - ./channel-artifacts/orderer.genesis.block:/var/hyperledger/orderer/orderer.genesis.block:ro
+      - ./crypto-config/ordererOrganizations/orderer.landregistry.local/orderers/orderer0.orderer.landregistry.local/msp:/var/hyperledger/orderer/msp:ro
+      - ./crypto-config/ordererOrganizations/orderer.landregistry.local/orderers/orderer0.orderer.landregistry.local/tls:/var/hyperledger/orderer/tls:ro
+      - orderer0.orderer.landregistry.local:/var/hyperledger/production/orderer
+    ports:
+      - "7050:7050"
+      - "9443:9443"
+    networks:
+      - land-registry-net
+
+  # ============================================================================
+  # CCLB Organization Services
+  # ============================================================================
+
+  # CA for CCLB
+  ca-cclb:
+    container_name: ca-cclb
+    image: hyperledger/fabric-ca:latest
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-cclb
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.cclb.landregistry.local-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/private.key
+      - FABRIC_CA_SERVER_PORT=7054
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.cclb.landregistry.local-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/private.key
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/data/fabric-ca-server.db
+    ports:
+      - "7054:7054"
+    volumes:
+      - ./ca-config/cclb/ca-cert.pem:/etc/hyperledger/fabric-ca-server-config/ca.cclb.landregistry.local-cert.pem:ro
+      - ./ca-config/cclb/private.key:/etc/hyperledger/fabric-ca-server-config/private.key:ro
+      - ./ca-config/cclb/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server-config/fabric-ca-server-config.yaml:ro
+      - ca-cclb:/data
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    networks:
+      - land-registry-net
+
+  # Peer for CCLB
+  peer0.cclb.landregistry.local:
+    container_name: peer0.cclb.landregistry.local
+    image: hyperledger/fabric-peer:latest
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.cclb.landregistry.local
+      - CORE_PEER_ADDRESS=peer0.cclb.landregistry.local:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.cclb.landregistry.local:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.cclb.landregistry.local:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.cclb.landregistry.local:7051
+      - CORE_PEER_LOCALMSPID=CCLEBMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9440
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0cclb"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb-cclb:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    depends_on:
+      - couchdb-cclb
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - ./crypto-config/peerOrganizations/cclb.landregistry.local/peers/peer0.cclb.landregistry.local/msp:/etc/hyperledger/fabric/msp:ro
+      - ./crypto-config/peerOrganizations/cclb.landregistry.local/peers/peer0.cclb.landregistry.local/tls:/etc/hyperledger/fabric/tls:ro
+      - peer0.cclb.landregistry.local:/var/hyperledger/production
+    ports:
+      - "7051:7051"
+      - "9440:9440"
+    networks:
+      - land-registry-net
+
+  # CouchDB for CCLB peer
+  couchdb-cclb:
+    container_name: couchdb-cclb
+    image: couchdb:3.3.2
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "5984:5984"
+    volumes:
+      - couchdb-cclb:/opt/couchdb/data
+    networks:
+      - land-registry-net
+
+  # ============================================================================
+  # StateOrgTS Organization Services
+  # ============================================================================
+
+  # CA for StateOrgTS
+  ca-ts:
+    container_name: ca-ts
+    image: hyperledger/fabric-ca:latest
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-ts
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.ts.landregistry.local-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/private.key
+      - FABRIC_CA_SERVER_PORT=7055
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.ts.landregistry.local-cert.pem
+      - FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/private.key
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/data/fabric-ca-server.db
+    ports:
+      - "7055:7055"
+    volumes:
+      - ./ca-config/ts/ca-cert.pem:/etc/hyperledger/fabric-ca-server-config/ca.ts.landregistry.local-cert.pem:ro
+      - ./ca-config/ts/private.key:/etc/hyperledger/fabric-ca-server-config/private.key:ro
+      - ./ca-config/ts/fabric-ca-server-config.yaml:/etc/hyperledger/fabric-ca-server-config/fabric-ca-server-config.yaml:ro
+      - ca-ts:/data
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    networks:
+      - land-registry-net
+
+  # Peer for StateOrgTS
+  peer0.ts.landregistry.local:
+    container_name: peer0.ts.landregistry.local
+    image: hyperledger/fabric-peer:latest
+    environment:
+      - FABRIC_CFG_PATH=/etc/hyperledger/peercfg
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_ID=peer0.ts.landregistry.local
+      - CORE_PEER_ADDRESS=peer0.ts.landregistry.local:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.ts.landregistry.local:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.ts.landregistry.local:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.ts.landregistry.local:7051
+      - CORE_PEER_LOCALMSPID=StateOrgTSMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9440
+      - CORE_METRICS_PROVIDER=prometheus
+      - CHAINCODE_AS_A_SERVICE_BUILDER_CONFIG={"peername":"peer0ts"}
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb-ts:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+    depends_on:
+      - couchdb-ts
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    volumes:
+      - /var/run/docker.sock:/host/var/run/docker.sock
+      - ./crypto-config/peerOrganizations/ts.landregistry.local/peers/peer0.ts.landregistry.local/msp:/etc/hyperledger/fabric/msp:ro
+      - ./crypto-config/peerOrganizations/ts.landregistry.local/peers/peer0.ts.landregistry.local/tls:/etc/hyperledger/fabric/tls:ro
+      - peer0.ts.landregistry.local:/var/hyperledger/production
+    ports:
+      - "9051:7051"
+      - "9440:9440"
+    networks:
+      - land-registry-net
+
+  # CouchDB for StateOrgTS peer
+  couchdb-ts:
+    container_name: couchdb-ts
+    image: couchdb:3.3.2
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - "6984:5984"
+    volumes:
+      - couchdb-ts:/opt/couchdb/data
+    networks:
+      - land-registry-net

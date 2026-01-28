@@ -1,0 +1,59 @@
+# Fabric CA Server Configuration for CCLB
+# This configuration file is used by the Fabric CA server when running in docker-compose
+
+server:
+  # IP and port the Fabric CA server listens on
+  listenaddress: 0.0.0.0
+  listenport: 7054
+
+  tls:
+    enabled: true
+    certfile: /etc/hyperledger/fabric-ca-server-config/ca.cclb.landregistry.local-cert.pem
+    keyfile: /etc/hyperledger/fabric-ca-server-config/private.key
+
+  ca:
+    name: ca-cclb
+    certfile: /etc/hyperledger/fabric-ca-server-config/ca.cclb.landregistry.local-cert.pem
+    keyfile: /etc/hyperledger/fabric-ca-server-config/private.key
+
+  # Database type: sqlite3 or mysql
+  db:
+    type: sqlite3
+    datasource: /data/fabric-ca-server.db
+
+  # Default values for new certificates
+  csr:
+    cn: ca-cclb
+    hosts:
+      - ca-cclb
+      - localhost
+    names:
+      - C: US
+        ST: California
+        L: San Francisco
+        O: Central Land Ledger Board
+        OU: CA
+
+# Certificate Authority configuration
+ca:
+  # Certificate validity period
+  certduration: 87600h # 10 years
+
+  # Intermediate CA
+  intermediateca:
+    parentserver:
+      url: ""
+
+# Access Control Lists
+acl:
+  enabled: false
+
+# Metrics configuration
+metrics:
+  provider: prometheus
+
+# HTTP Server configuration
+http:
+  enabled: true
+  listenaddress: 0.0.0.0
+  port: 7055
