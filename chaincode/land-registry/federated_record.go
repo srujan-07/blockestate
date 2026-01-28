@@ -10,9 +10,9 @@ import (
 
 // RequestPropertyID is called by State registrars to request a CCLB-issued Property ID
 // FEDERATED FLOW STEP 1/3:
-//   1. RequestPropertyID() — state submits request with draft record details
-//   2. GetPropertyID() — state polls CCLB via cclb-global channel
-//   3. CreateStateRecord() — state binds full details to the Property ID
+//  1. RequestPropertyID() — state submits request with draft record details
+//  2. GetPropertyID() — state polls CCLB via cclb-global channel
+//  3. CreateStateRecord() — state binds full details to the Property ID
 //
 // This function:
 //   - Stores draft record locally (no Property ID yet)
@@ -84,9 +84,10 @@ func (c *LandRegistryContract) RequestPropertyID(
 
 // CreateStateRecord binds a CCLB-issued Property ID to full state record
 // FEDERATED FLOW STEP 3/3:
-//   Prerequisites:
-//     - Property ID already issued by CCLB on cclb-global channel
-//     - Backend verified the ID exists via QueryPropertyID (CCLB)
+//
+//	Prerequisites:
+//	  - Property ID already issued by CCLB on cclb-global channel
+//	  - Backend verified the ID exists via QueryPropertyID (CCLB)
 //
 // This function:
 //   - Looks up draft record by request ID (from RequestPropertyID)

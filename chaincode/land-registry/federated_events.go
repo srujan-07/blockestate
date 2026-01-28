@@ -8,13 +8,13 @@ import (
 
 // PropertyIDRequestedEvent emitted when a state requests a CCLB Property ID
 type PropertyIDRequestedEvent struct {
-	RequestID  string `json:"requestId"`
-	StateCode  string `json:"stateCode"`
-	SurveyNo   string `json:"surveyNo"`
-	District   string `json:"district"`
-	Mandal     string `json:"mandal"`
-	Village    string `json:"village"`
-	Timestamp  string `json:"timestamp"`
+	RequestID string `json:"requestId"`
+	StateCode string `json:"stateCode"`
+	SurveyNo  string `json:"surveyNo"`
+	District  string `json:"district"`
+	Mandal    string `json:"mandal"`
+	Village   string `json:"village"`
+	Timestamp string `json:"timestamp"`
 }
 
 // StateRecordCreatedEvent emitted when a state binds a Property ID to full record

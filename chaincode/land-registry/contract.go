@@ -26,4 +26,3 @@ func (s *StateChaincode) InitLedger(ctx contractapi.TransactionContextInterface)
 type LandRegistryContract struct {
 	contractapi.Contract
 }
-

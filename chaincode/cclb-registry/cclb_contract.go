@@ -33,11 +33,11 @@ type PropertyID struct {
 
 // StateRegistry maps state codes to organization MSPs and channels
 type StateRegistry struct {
-	StateCode       string `json:"stateCode"`       // TS, KA, AP
-	StateName       string `json:"stateName"`       // Telangana, Karnataka
-	OrgMSPID        string `json:"orgMSPID"`        // StateTS-MSP
-	StateChannelID  string `json:"stateChannelID"`  // state-ts
-	InitializedAt   string `json:"initializedAt"`
+	StateCode      string `json:"stateCode"`      // TS, KA, AP
+	StateName      string `json:"stateName"`      // Telangana, Karnataka
+	OrgMSPID       string `json:"orgMSPID"`       // StateTS-MSP
+	StateChannelID string `json:"stateChannelID"` // state-ts
+	InitializedAt  string `json:"initializedAt"`
 }
 
 // IssuePropertyID is called by state ledgers to request a globally unique Property ID
@@ -45,6 +45,7 @@ type StateRegistry struct {
 // Parameters:
 //   - stateCode: State code (TS, KA, AP)
 //   - requesterMSP: MSP ID of the requesting state org
+//
 // Returns: PropertyID with CCLB-generated ID
 func (c *CCLBRegistryContract) IssuePropertyID(
 	ctx contractapi.TransactionContextInterface,

@@ -15,20 +15,20 @@ import (
 //   - StateRecord holds full details and local state transactions
 //   - Each PropertyID appears on exactly one state channel (state-<code>)
 type LandRecord struct {
-	PropertyID      string `json:"propertyId"`      // CCLB-2026-TS-000001 (from cclb-global)
-	StateCode       string `json:"stateCode"`       // TS, KA, AP (for routing)
-	Owner           string `json:"owner"`
-	SurveyNo        string `json:"surveyNo"`
-	District        string `json:"district"`
-	Mandal          string `json:"mandal"`
-	Village         string `json:"village"`
-	Area            string `json:"area"`
-	LandType        string `json:"landType"`
-	MarketValue     string `json:"marketValue"`
-	LastUpdated     string `json:"lastUpdated"`
-	IPFSCID         string `json:"ipfsCID,omitempty"`
-	VerifiedByCCLB  bool   `json:"verifiedByCCLB"`  // Cross-chain verification status
-	CCLBVerifyTx    string `json:"ccLbVerifyTx"`    // Reference to CCLB verification tx
+	PropertyID     string `json:"propertyId"` // CCLB-2026-TS-000001 (from cclb-global)
+	StateCode      string `json:"stateCode"`  // TS, KA, AP (for routing)
+	Owner          string `json:"owner"`
+	SurveyNo       string `json:"surveyNo"`
+	District       string `json:"district"`
+	Mandal         string `json:"mandal"`
+	Village        string `json:"village"`
+	Area           string `json:"area"`
+	LandType       string `json:"landType"`
+	MarketValue    string `json:"marketValue"`
+	LastUpdated    string `json:"lastUpdated"`
+	IPFSCID        string `json:"ipfsCID,omitempty"`
+	VerifiedByCCLB bool   `json:"verifiedByCCLB"` // Cross-chain verification status
+	CCLBVerifyTx   string `json:"ccLbVerifyTx"`   // Reference to CCLB verification tx
 }
 
 // CreateLandRecord creates a new land record on the state channel
@@ -36,8 +36,9 @@ type LandRecord struct {
 //   - PropertyID is NO LONGER auto-generated here
 //   - Instead: Use RequestPropertyID() first to get CCLB-issued ID
 //   - Then call CreateStateRecord() to bind details to that ID
+//
 // This ensures CCLB is canonical authority for Property IDs
-// 
+//
 // Deprecated in favor of: RequestPropertyID + CreateStateRecord flow
 // Kept for backward compatibility only
 func (c *LandRegistryContract) CreateLandRecord(
@@ -62,8 +63,8 @@ func (c *LandRegistryContract) CreateLandRecord(
 	// DEPRECATED: Auto-generation removed. Return error directing to new flow.
 	return nil, fmt.Errorf(
 		"❌ Legacy CreateLandRecord is deprecated in federated architecture\n" +
-		"Use federated flow: RequestPropertyID() → GetPropertyID() → CreateStateRecord()\n" +
-		"This ensures Property IDs are issued ONLY by CCLB",
+			"Use federated flow: RequestPropertyID() → GetPropertyID() → CreateStateRecord()\n" +
+			"This ensures Property IDs are issued ONLY by CCLB",
 	)
 }
 
