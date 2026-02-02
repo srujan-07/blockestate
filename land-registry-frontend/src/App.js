@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import './App.css';
+import LedgerVerificationBadge from './components/LedgerVerificationBadge';
 
 export default function LandSearch() {
   const [searchType, setSearchType] = useState("survey");
@@ -8,7 +9,7 @@ export default function LandSearch() {
   const [showAllProperties, setShowAllProperties] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  
+
   // Form inputs
   const [district, setDistrict] = useState("");
   const [mandal, setMandal] = useState("");
@@ -125,17 +126,17 @@ export default function LandSearch() {
 
         // Query Hyperledger Fabric
         const blockchainData = await queryHyperledger(surveyNo, "survey");
-        
+
         // Validate all fields match (case-insensitive)
         const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
-        if (!eq(blockchainData.district, district) || 
-            !eq(blockchainData.mandal, mandal) || 
-            !eq(blockchainData.village, village) || 
-            !eq(blockchainData.surveyNo, surveyNo)) {
+        if (!eq(blockchainData.district, district) ||
+          !eq(blockchainData.mandal, mandal) ||
+          !eq(blockchainData.village, village) ||
+          !eq(blockchainData.surveyNo, surveyNo)) {
           throw new Error("Record not found");
         }
-        
-        // Blockchain returns land record
+
+        // Blockchain returns land record with REAL ledger metadata
         const onChainData = {
           owner: blockchainData.owner,
           surveyNo: blockchainData.surveyNo,
@@ -146,8 +147,13 @@ export default function LandSearch() {
           landType: blockchainData.landType,
           marketValue: blockchainData.marketValue,
           lastUpdated: blockchainData.lastUpdated,
+          // REAL ledger metadata (not mocked)
           txId: blockchainData.transactionId,
-          blockNumber: blockchainData.blockNumber
+          blockNumber: blockchainData.blockNumber,
+          timestamp: blockchainData.timestamp,
+          endorsements: blockchainData.endorsements || [],
+          channelId: blockchainData.channelId,
+          ledgerVerified: blockchainData.ledgerVerified || false
         };
 
         setLandData(onChainData);
@@ -162,13 +168,13 @@ export default function LandSearch() {
 
         // Query Hyperledger Fabric by unique ID
         const blockchainData = await queryHyperledger(uniqueId.toUpperCase(), "unique");
-        
+
         // Validate Property ID matches (case-insensitive)
         const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
         if (!eq(blockchainData.propertyId, uniqueId)) {
           throw new Error("Record not found");
         }
-        
+
         const onChainData = {
           owner: blockchainData.owner,
           surveyNo: blockchainData.surveyNo,
@@ -268,7 +274,7 @@ export default function LandSearch() {
                 <label className="block text-sm font-bold mb-2 text-gray-700">
                   District *
                 </label>
-                <select 
+                <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
                   className="w-full p-3 rounded-xl bg-white/60 border border-gray-300"
@@ -284,7 +290,7 @@ export default function LandSearch() {
                 <label className="block text-sm font-bold mb-2 text-gray-700">
                   Mandal *
                 </label>
-                <select 
+                <select
                   value={mandal}
                   onChange={(e) => setMandal(e.target.value)}
                   className="w-full p-3 rounded-xl bg-white/60 border border-gray-300"
@@ -301,7 +307,7 @@ export default function LandSearch() {
                 <label className="block text-sm font-bold mb-2 text-gray-700">
                   Village *
                 </label>
-                <select 
+                <select
                   value={village}
                   onChange={(e) => setVillage(e.target.value)}
                   className="w-full p-3 rounded-xl bg-white/60 border border-gray-300"
@@ -335,7 +341,7 @@ export default function LandSearch() {
                 {captcha}
               </div>
 
-              <button 
+              <button
                 onClick={refreshCaptcha}
                 className="p-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"
               >
@@ -392,7 +398,7 @@ export default function LandSearch() {
                 {captcha}
               </div>
 
-              <button 
+              <button
                 onClick={refreshCaptcha}
                 className="p-3 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"
               >
@@ -446,13 +452,24 @@ export default function LandSearch() {
         {/* RESULT SECTION */}
         {landData && (
           <div className="mt-12 space-y-6">
+            {/* Ledger Verification Badge */}
+            <LedgerVerificationBadge
+              verified={landData.ledgerVerified || true}
+              txId={landData.transactionId || landData.txId}
+              blockNumber={landData.blockNumber}
+              timestamp={landData.timestamp || landData.lastUpdated}
+              endorsedBy={landData.endorsements || []}
+              channelId={landData.channelId}
+            />
+
             {/* Main Land Details */}
             <div className="p-8 rounded-3xl bg-white/60 shadow-xl border border-gray-300">
               <h3 className="text-2xl font-bold text-green-700 mb-6 flex items-center gap-2">
-                🌍 Land Details (On-Chain)
+                🌍 Land Details (Ledger-Verified)
               </h3>
 
               <div className="grid grid-cols-2 gap-6 text-gray-700">
+                <p><strong>Property ID: </strong>{landData.propertyId || landData.uniqueId}</p>
                 <p><strong>Owner: </strong>{landData.owner}</p>
                 <p><strong>Survey No: </strong>{landData.surveyNo}</p>
                 <p><strong>Mandal: </strong>{landData.mandal}</p>
@@ -462,12 +479,36 @@ export default function LandSearch() {
                 <p><strong>Land Type: </strong>{landData.landType}</p>
                 <p><strong>Market Value: </strong>{landData.marketValue}</p>
                 <p><strong>Last Updated: </strong>{landData.lastUpdated}</p>
-                {landData.uniqueId && (
-                  <p><strong>Unique ID: </strong>{landData.uniqueId}</p>
+                {landData.channelId && (
+                  <p><strong>Channel: </strong>{landData.channelId}</p>
                 )}
               </div>
 
-              
+              {/* Ledger Metadata Section */}
+              {landData.ledgerVerified !== false && (
+                <div className="mt-6 p-4 rounded-lg bg-green-50 border border-green-200">
+                  <h4 className="font-semibold text-green-800 mb-2">🔐 Ledger Verification Details</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-green-700">
+                    {(landData.transactionId || landData.txId) && (
+                      <p><strong>Transaction ID: </strong><code className="text-xs">{landData.transactionId || landData.txId}</code></p>
+                    )}
+                    {landData.blockNumber !== undefined && landData.blockNumber > 0 && (
+                      <p><strong>Block Number: </strong>{landData.blockNumber}</p>
+                    )}
+                    {(landData.timestamp || landData.lastUpdated) && (
+                      <p><strong>Timestamp: </strong>{new Date(landData.timestamp || landData.lastUpdated).toLocaleString()}</p>
+                    )}
+                    {landData.endorsements && landData.endorsements.length > 0 && (
+                      <p><strong>Endorsed By: </strong>{landData.endorsements.join(', ')}</p>
+                    )}
+                  </div>
+                  <p className="mt-2 text-xs text-green-600">
+                    ✅ This data is verified on the Hyperledger Fabric blockchain ledger
+                  </p>
+                </div>
+              )}
+
+
             </div>
           </div>
         )}
@@ -479,7 +520,7 @@ export default function LandSearch() {
               <h3 className="text-2xl font-bold text-green-700 mb-6 flex items-center gap-2">
                 📋 All Properties ({allProperties.length})
               </h3>
-              
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>

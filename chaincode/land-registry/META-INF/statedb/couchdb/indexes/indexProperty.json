@@ -1,0 +1,12 @@
+{
+    "index": {
+        "fields": [
+            "propertyId",
+            "owner",
+            "verifiedByCCLB"
+        ]
+    },
+    "ddoc": "indexPropertyDoc",
+    "name": "indexProperty",
+    "type": "json"
+}

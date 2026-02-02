@@ -1,0 +1,13 @@
+{
+    "index": {
+        "fields": [
+            "district",
+            "mandal",
+            "village",
+            "surveyNo"
+        ]
+    },
+    "ddoc": "indexSurveyDoc",
+    "name": "indexSurvey",
+    "type": "json"
+}

@@ -1,26 +1,35 @@
 const express = require('express');
 const cors = require('cors');
-// Note: fabric_federated.js requires multi-channel setup (Phase 7)
-// For current deployment, using single-channel fabric.js
-const { getContract } = require('./fabric');
-const { allQuery, initializeDatabase, seedDatabase } = require('./db');
+const LedgerService = require('./services/LedgerService');
+const StorageService = require('./services/StorageService');
+const { initializeDatabase, seedDatabase } = require('./db');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Citizen queries always use Supabase (fast, indexed lookups)
-// 🔗 Ledger writes go through Fabric (blockchain audit trail)
-// 🏛️  FEDERATED ARCHITECTURE: Multi-channel support with CCLB and State registries
+// PRODUCTION ARCHITECTURE:
+// - Ledger is SOURCE OF TRUTH (Fabric blockchain)
+// - All queries MUST query ledger first
+// - Database is secondary (indexing, documents only)
+// - Database NEVER overrides ledger state
 
-const eq = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+// Initialize services
+const ledgerService = new LedgerService();
+const storageService = new StorageService();
 
-// Note: Helper functions for federated architecture (removed for Phase 5->6 transition)
-// extractStateCodeFromPropertyID() - See fabric_federated.js
-// getOrgForState() - See fabric_federated.js
-// These are available in Phase 5 design, awaiting Phase 7 deployment
+// Initialize ledger connection on startup
+(async () => {
+  try {
+    await ledgerService.initialize('admin');
+    console.log('✅ LedgerService initialized');
+  } catch (error) {
+    console.error('❌ LedgerService initialization failed:', error.message);
+    console.error('⚠️  Backend will continue but ledger queries will fail');
+  }
+})();
 
-// Query by Survey Number - Citizen API (Supabase)
+// Query by Survey Number - LEDGER-FIRST
 app.post('/land/query-by-survey', async (req, res) => {
   const { district, mandal, village, surveyNo } = req.body || {};
   
@@ -38,50 +47,64 @@ app.post('/land/query-by-survey', async (req, res) => {
     return res.status(400).json({ error: 'Survey Number is required' });
   }
   
-  console.log(`[CITIZEN QUERY] Searching Supabase: district=${district}, mandal=${mandal}, village=${village}, surveyNo=${surveyNo}`);
+  console.log(`[LEDGER QUERY] Querying ledger: district=${district}, mandal=${mandal}, village=${village}, surveyNo=${surveyNo}`);
   
   try {
-    const records = await allQuery({});
-    
-    const result = records.find(record => 
-      eq(record.district, district) && 
-      eq(record.mandal, mandal) && 
-      eq(record.village, village) && 
-      eq(record.survey_no, surveyNo)
+    // LEDGER-FIRST: Query from Fabric ledger
+    const ledgerResult = await ledgerService.queryPropertyBySurvey(
+      district,
+      mandal,
+      village,
+      surveyNo
     );
-    
-    if (!result) {
-      console.log(`[NOT FOUND] No matching record in Supabase`);
-      return res.status(404).json({ error: 'Land record not found. Please verify all details.' });
+
+    console.log(`✅ Ledger query successful, txId: ${ledgerResult.ledgerMetadata.txId}`);
+
+    // Enrich with storage metadata (documents, etc.)
+    let documents = [];
+    try {
+      documents = await storageService.getDocumentMetadata(ledgerResult.property.propertyId);
+    } catch (err) {
+      console.warn('Could not fetch document metadata:', err.message);
     }
-    
-    // Transform to camelCase for API response
-    const response = {
-      id: result.id,
-      propertyId: result.property_id,
-      surveyNo: result.survey_no,
-      district: result.district,
-      mandal: result.mandal,
-      village: result.village,
-      owner: result.owner,
-      area: result.area,
-      landType: result.land_type,
-      marketValue: result.market_value,
-      lastUpdated: result.last_updated,
-      transactionId: result.transaction_id,
-      blockNumber: result.block_number,
-      ipfsCID: result.ipfs_cid
-    };
-    
-    console.log(`[FOUND] Supabase record: ${response.propertyId}`);
-    res.json(response);
+
+    // Sync to cache for future fast lookups (async, non-blocking)
+    setImmediate(async () => {
+      try {
+        await storageService.syncLedgerToCache(
+          ledgerResult.property.propertyId,
+          ledgerResult.property,
+          ledgerResult.ledgerMetadata.txId,
+          ledgerResult.ledgerMetadata.blockNumber
+        );
+      } catch (err) {
+        console.warn('Could not sync to cache:', err.message);
+      }
+    });
+
+    // Return property with REAL ledger metadata
+    res.json({
+      ...ledgerResult.property,
+      // REAL ledger metadata (not mocked)
+      transactionId: ledgerResult.ledgerMetadata.txId,
+      blockNumber: ledgerResult.ledgerMetadata.blockNumber,
+      timestamp: ledgerResult.ledgerMetadata.timestamp,
+      endorsements: ledgerResult.ledgerMetadata.endorsements,
+      channelId: ledgerResult.ledgerMetadata.channelId,
+      ledgerVerified: true,
+      // Supporting metadata from storage
+      documents: documents
+    });
   } catch (error) {
-    console.error('[ERROR] Database query failed:', error.message);
-    return res.status(500).json({ error: 'Database error: ' + error.message });
+    console.error('[ERROR] Ledger query failed:', error.message);
+    return res.status(404).json({ 
+      error: 'Land record not found on ledger. Please verify all details.',
+      details: error.message
+    });
   }
 });
 
-// Query by Property ID - Citizen API (Supabase)
+// Query by Property ID - LEDGER-FIRST
 app.post('/land/query-by-id', async (req, res) => {
   const { propertyId } = req.body || {};
   
@@ -90,72 +113,85 @@ app.post('/land/query-by-id', async (req, res) => {
     return res.status(400).json({ error: 'Property ID is required' });
   }
   
-  console.log(`[CITIZEN QUERY] Searching Supabase by ID: propertyId=${propertyId}`);
+  console.log(`[LEDGER QUERY] Querying ledger by ID: propertyId=${propertyId}`);
   
   try {
-    const records = await allQuery({});
-    
-    const result = records.find(record => 
-      eq(record.property_id, propertyId)
-    );
-    
-    if (!result) {
-      console.log(`[NOT FOUND] No matching record for propertyId=${propertyId}`);
-      return res.status(404).json({ error: 'Land record not found. Please verify the Property ID.' });
+    // LEDGER-FIRST: Query from Fabric ledger
+    const ledgerResult = await ledgerService.queryPropertyById(propertyId);
+
+    console.log(`✅ Ledger query successful, txId: ${ledgerResult.ledgerMetadata.txId}`);
+
+    // Enrich with storage metadata
+    let documents = [];
+    try {
+      documents = await storageService.getDocumentMetadata(propertyId);
+    } catch (err) {
+      console.warn('Could not fetch document metadata:', err.message);
     }
-    
-    // Transform to camelCase for API response
-    const response = {
-      id: result.id,
-      propertyId: result.property_id,
-      surveyNo: result.survey_no,
-      district: result.district,
-      mandal: result.mandal,
-      village: result.village,
-      owner: result.owner,
-      area: result.area,
-      landType: result.land_type,
-      marketValue: result.market_value,
-      lastUpdated: result.last_updated,
-      transactionId: result.transaction_id,
-      blockNumber: result.block_number
-    };
-    
-    console.log(`[FOUND] Supabase record: ${response.propertyId}`);
-    res.json(response);
+
+    // Sync to cache (async, non-blocking)
+    setImmediate(async () => {
+      try {
+        await storageService.syncLedgerToCache(
+          propertyId,
+          ledgerResult.property,
+          ledgerResult.ledgerMetadata.txId,
+          ledgerResult.ledgerMetadata.blockNumber
+        );
+      } catch (err) {
+        console.warn('Could not sync to cache:', err.message);
+      }
+    });
+
+    // Return property with REAL ledger metadata
+    res.json({
+      ...ledgerResult.property,
+      transactionId: ledgerResult.ledgerMetadata.txId,
+      blockNumber: ledgerResult.ledgerMetadata.blockNumber,
+      timestamp: ledgerResult.ledgerMetadata.timestamp,
+      endorsements: ledgerResult.ledgerMetadata.endorsements,
+      channelId: ledgerResult.ledgerMetadata.channelId,
+      ledgerVerified: true,
+      documents: documents
+    });
   } catch (error) {
-    console.error('[ERROR] Database query failed:', error.message);
-    return res.status(500).json({ error: 'Database error: ' + error.message });
+    console.error('[ERROR] Ledger query failed:', error.message);
+    return res.status(404).json({ 
+      error: 'Land record not found on ledger. Please verify the Property ID.',
+      details: error.message
+    });
   }
 });
 
-// Get all records - Citizen API (Supabase)
+// Get all records - LEDGER-FIRST
 app.get('/land/all', async (req, res) => {
   try {
-    const records = await allQuery({});
+    // LEDGER-FIRST: Query all properties from ledger
+    const allProperties = await ledgerService.fabricService.evaluateTransaction('GetAllLandRecords');
     
-    // Transform to camelCase
-    const transformedRecords = records.map(record => ({
-      id: record.id,
-      propertyId: record.property_id,
-      surveyNo: record.survey_no,
-      district: record.district,
-      mandal: record.mandal,
-      village: record.village,
-      owner: record.owner,
-      area: record.area,
-      landType: record.land_type,
-      marketValue: record.market_value
+    // Transform to response format
+    const transformedRecords = (allProperties || []).map(property => ({
+      propertyId: property.propertyId,
+      surveyNo: property.surveyNo,
+      district: property.district,
+      mandal: property.mandal,
+      village: property.village,
+      owner: property.owner,
+      area: property.area,
+      landType: property.landType,
+      marketValue: property.marketValue,
+      ledgerVerified: true
     }));
     
     res.json({
-      source: 'Supabase (Citizen Space)',
+      source: 'Hyperledger Fabric Ledger',
       totalRecords: transformedRecords.length,
-      records: transformedRecords
+      records: transformedRecords,
+      ledgerVerified: true
     });
   } catch (error) {
-    console.error('[ERROR] Failed to fetch all records:', error.message);
-    res.status(500).json({ error: 'Database error: ' + error.message });
+    console.error('[ERROR] Failed to fetch all records from ledger:', error.message);
+    res.status(500).json({ error: 'Ledger query error: ' + error.message });
   }
 });
 
@@ -188,17 +224,25 @@ app.get('/property/:propertyID/federated', async (req, res) => { ... });
 // Health check
 app.get('/health', async (_req, res) => {
   try {
-    await allQuery({});
+    const ledgerHealth = await ledgerService.healthCheck();
+    const storageHealth = await storageService.healthCheck();
+    
     res.json({
-      ok: true,
-      source: 'Supabase + Fabric',
-      database: 'connected',
-      fabric: 'single-channel (mychannel)',
-      architecture: 'hybrid',
-      roadmap: 'See FEDERATED_ARCHITECTURE.md for multi-channel deployment'
+      ok: ledgerHealth.healthy && storageHealth,
+      architecture: 'ledger-first',
+      ledger: {
+        healthy: ledgerHealth.healthy,
+        connected: ledgerHealth.connected,
+        identity: ledgerHealth.identity,
+        channel: ledgerHealth.channel
+      },
+      storage: {
+        available: storageHealth
+      },
+      source: 'Hyperledger Fabric Ledger (authoritative) + Database (indexing)'
     });
   } catch (error) {
-    res.status(500).json({ ok: false, error: 'Database connection failed' });
+    res.status(500).json({ ok: false, error: 'Health check failed: ' + error.message });
   }
 });
 
@@ -207,26 +251,26 @@ const PORT = process.env.PORT || 4000;
 // Initialize database and start server
 (async () => {
   try {
-    // Always initialize Supabase for citizen queries
+    // Initialize database for indexing (secondary storage)
     await initializeDatabase();
     await seedDatabase();
     
     app.listen(PORT, () => {
       console.log(`✅ Backend running on port ${PORT}`);
-      console.log(`📊 Architecture: 🏛️  HYBRID (Supabase + Fabric Single-Channel)`);
+      console.log(`📊 Architecture: 🔐 LEDGER-FIRST (Hyperledger Fabric as Source of Truth)`);
       console.log(``);
-      console.log(`📊 Citizen Data Layer: ☁️  Supabase (PostgreSQL)`);
-      console.log(`🔗 Ledger: 🔐 Hyperledger Fabric (Single-Channel: mychannel)`);
-      console.log(`🏛️  Deployment Status: PHASE 5 COMPLETE - PHASE 7 PENDING (Multi-Channel Setup)`);
+      console.log(`🔗 Ledger: Hyperledger Fabric (Authoritative Source)`);
+      console.log(`📊 Storage: Database (Indexing & Documents Only)`);
+      console.log(`🏛️  Network: Custom Fabric Network (CCLB + State Organizations)`);
       console.log(``);
-      console.log(`🔍 ACTIVE ENDPOINTS:`);
+      console.log(`🔍 ACTIVE ENDPOINTS (LEDGER-FIRST):`);
       console.log(`   - POST /land/query-by-survey (district, mandal, village, surveyNo)`);
       console.log(`   - POST /land/query-by-id (propertyId)`);
       console.log(`   - GET /land/all`);
       console.log(``);
-      console.log(`🚀 FEDERATED ENDPOINTS (Phase 7 - Deployment in Progress):`);
-      console.log(`   - Currently DISABLED - Requires multi-channel Fabric network`);
-      console.log(`   - See: FEDERATED_API_GUIDE.md for full specification`);
+      console.log(`✅ All queries query Fabric ledger FIRST`);
+      console.log(`✅ Database is secondary (indexing, documents)`);
+      console.log(`✅ Database NEVER overrides ledger state`);
       console.log(``);
       console.log(`🔗 Visit http://localhost:${PORT}/health to check status`);
     });

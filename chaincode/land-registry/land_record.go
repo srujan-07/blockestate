@@ -31,6 +31,99 @@ type LandRecord struct {
 	CCLBVerifyTx   string `json:"ccLbVerifyTx"`   // Reference to CCLB verification tx
 }
 
+// CreateProperty creates a new land property record on the ledger
+// PRODUCTION REQUIREMENTS:
+//   - Only CCLB organization can create properties (enforced by endorsement policy)
+//   - Requires CCLB + State organization endorsement (enforced by configtx.yaml)
+//   - Property ID must be issued by CCLB first (via CCLB chaincode)
+//   - All data is stored on ledger as source of truth
+func (c *LandRegistryContract) CreateProperty(
+	ctx contractapi.TransactionContextInterface,
+	propertyID string,
+	owner string,
+	surveyNo string,
+	district string,
+	mandal string,
+	village string,
+	area string,
+	landType string,
+	marketValue string,
+	stateCode string,
+	ipfsCID string,
+) (*LandRecord, error) {
+
+	// Enforce CCLB-only access via MSP ID check
+	mspID, err := ctx.GetClientIdentity().GetMSPID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MSP ID: %v", err)
+	}
+
+	// Only CCLB can create properties (endorsement policy also enforces this)
+	if mspID != "CCLEBMSP" {
+		return nil, fmt.Errorf("only CCLB organization can create properties, caller MSP: %s", mspID)
+	}
+
+	// Validate required fields
+	if propertyID == "" {
+		return nil, fmt.Errorf("property ID is required (must be issued by CCLB)")
+	}
+	if owner == "" || surveyNo == "" || district == "" || mandal == "" || village == "" {
+		return nil, fmt.Errorf("all land details are required")
+	}
+
+	// Check if property already exists
+	existing, err := ctx.GetStub().GetState(propertyID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check existing property: %v", err)
+	}
+	if existing != nil {
+		return nil, fmt.Errorf("property %s already exists on ledger", propertyID)
+	}
+
+	// Create land record
+	landRecord := LandRecord{
+		PropertyID:     propertyID,
+		StateCode:      stateCode,
+		Owner:          owner,
+		SurveyNo:      surveyNo,
+		District:      district,
+		Mandal:         mandal,
+		Village:        village,
+		Area:           area,
+		LandType:       landType,
+		MarketValue:    marketValue,
+		LastUpdated:    time.Now().Format("2006-01-02T15:04:05Z"),
+		IPFSCID:        ipfsCID,
+		VerifiedByCCLB: true,
+		CCLBVerifyTx:   ctx.GetStub().GetTxID(),
+	}
+
+	// Marshal and store on ledger
+	landRecordJSON, err := json.Marshal(landRecord)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal land record: %v", err)
+	}
+
+	if err := ctx.GetStub().PutState(propertyID, landRecordJSON); err != nil {
+		return nil, fmt.Errorf("failed to store land record on ledger: %v", err)
+	}
+
+	// Emit PropertyCreatedEvent for audit trail
+	eventPayload, _ := json.Marshal(map[string]interface{}{
+		"propertyId": propertyID,
+		"owner":      owner,
+		"district":   district,
+		"mandal":     mandal,
+		"village":    village,
+		"surveyNo":   surveyNo,
+		"createdBy":  mspID,
+		"txId":       ctx.GetStub().GetTxID(),
+	})
+	ctx.GetStub().SetEvent("PropertyCreated", eventPayload)
+
+	return &landRecord, nil
+}
+
 // CreateLandRecord creates a new land record on the state channel
 // FEDERATED ARCHITECTURE CHANGE:
 //   - PropertyID is NO LONGER auto-generated here
@@ -39,7 +132,7 @@ type LandRecord struct {
 //
 // This ensures CCLB is canonical authority for Property IDs
 //
-// Deprecated in favor of: RequestPropertyID + CreateStateRecord flow
+// Deprecated in favor of: CreateProperty (CCLB-only) or RequestPropertyID + CreateStateRecord flow
 // Kept for backward compatibility only
 func (c *LandRegistryContract) CreateLandRecord(
 	ctx contractapi.TransactionContextInterface,
@@ -63,7 +156,7 @@ func (c *LandRegistryContract) CreateLandRecord(
 	// DEPRECATED: Auto-generation removed. Return error directing to new flow.
 	return nil, fmt.Errorf(
 		"❌ Legacy CreateLandRecord is deprecated in federated architecture\n" +
-			"Use federated flow: RequestPropertyID() → GetPropertyID() → CreateStateRecord()\n" +
+			"Use CreateProperty() with CCLB-issued Property ID, or federated flow: RequestPropertyID() → GetPropertyID() → CreateStateRecord()\n" +
 			"This ensures Property IDs are issued ONLY by CCLB",
 	)
 }

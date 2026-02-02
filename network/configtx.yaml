@@ -168,6 +168,11 @@ Profiles:
         - *StateOrgTS
       Capabilities:
         <<: *ApplicationCapabilities
+      Policies:
+        # Endorsement policy: CCLB + State must endorse
+        Endorsement:
+          Type: Signature
+          Rule: "AND('CCLEBMSP.peer', 'StateOrgTSMSP.peer')"
 
   # state-ts channel: Telangana state-specific land records
   StateTSChannel:
@@ -180,3 +185,9 @@ Profiles:
         - *StateOrgTS
       Capabilities:
         <<: *ApplicationCapabilities
+      Policies:
+        # Endorsement policy: CCLB + State must endorse
+        # This ensures no single organization can modify records
+        Endorsement:
+          Type: Signature
+          Rule: "AND('CCLEBMSP.peer', 'StateOrgTSMSP.peer')"
