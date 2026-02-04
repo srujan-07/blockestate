@@ -1,5 +1,3 @@
-version: '3.8'
-
 networks:
   land-registry-net:
     driver: bridge
@@ -10,6 +8,8 @@ volumes:
   peer0.ts.landregistry.local:
   ca-cclb:
   ca-ts:
+  couchdb-cclb:
+  couchdb-ts:
 
 services:
   # ============================================================================
@@ -22,21 +22,17 @@ services:
       - FABRIC_LOGGING_SPEC=INFO
       - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
       - ORDERER_GENERAL_LISTENPORT=7050
-      - ORDERER_GENERAL_GENESISMETHOD=file
-      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      - ORDERER_GENERAL_GENESISMETHOD=none
       - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
       - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
       - ORDERER_GENERAL_TLS_ENABLED=true
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
-      - ORDERER_GENERAL_CLUSTER_LISTENADDRESS=0.0.0.0
-      - ORDERER_GENERAL_CLUSTER_LISTENPORT=7051
-      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
-      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
-      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_CHANNELPARTICIPATION_MAXREQUESTBODYSIZE=1048576
       - ORDERER_METRICS_PROVIDER=prometheus
-      - ORDERER_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+      - ORDERER_OPERATIONS_LISTENADDRESS=0.0.0.0:8443
       - ORDERER_OPERATIONS_TLS_ENABLED=false
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric
     command: orderer
@@ -47,7 +43,7 @@ services:
       - orderer0.orderer.landregistry.local:/var/hyperledger/production/orderer
     ports:
       - "7050:7050"
-      - "9443:9443"
+      - "8443:8443"
     networks:
       - land-registry-net
 
@@ -118,6 +114,9 @@ services:
       - /var/run/docker.sock:/host/var/run/docker.sock
       - ./crypto-config/peerOrganizations/cclb.landregistry.local/peers/peer0.cclb.landregistry.local/msp:/etc/hyperledger/fabric/msp:ro
       - ./crypto-config/peerOrganizations/cclb.landregistry.local/peers/peer0.cclb.landregistry.local/tls:/etc/hyperledger/fabric/tls:ro
+      - ./peercfg:/etc/hyperledger/peercfg:ro
+      - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts:ro
+      - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config:ro
       - peer0.cclb.landregistry.local:/var/hyperledger/production
     ports:
       - "7051:7051"
@@ -206,10 +205,13 @@ services:
       - /var/run/docker.sock:/host/var/run/docker.sock
       - ./crypto-config/peerOrganizations/ts.landregistry.local/peers/peer0.ts.landregistry.local/msp:/etc/hyperledger/fabric/msp:ro
       - ./crypto-config/peerOrganizations/ts.landregistry.local/peers/peer0.ts.landregistry.local/tls:/etc/hyperledger/fabric/tls:ro
+      - ./peercfg:/etc/hyperledger/peercfg:ro
+      - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts:ro
+      - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto-config:ro
       - peer0.ts.landregistry.local:/var/hyperledger/production
     ports:
       - "9051:7051"
-      - "9440:9440"
+      - "9441:9440"
     networks:
       - land-registry-net
 

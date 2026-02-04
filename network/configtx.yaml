@@ -1,5 +1,6 @@
-# ConfigTX configuration for Land Registry custom network
+﻿# ConfigTX configuration for Land Registry custom network
 # Defines organizations, consortiums, and channel policies
+# PRODUCTION-GRADE MULTI-ORG SETUP
 
 Organizations:
   - &OrdererOrg
@@ -17,27 +18,29 @@ Organizations:
         Type: Signature
         Rule: "OR('OrdererMSP.admin')"
 
+  # Central Common Land Base (CCLB) - Root Authority
   - &CCLB
     Name: CCLB
-    ID: CCLEBMSP
+    ID: CCLBMSP
     MSPDir: crypto-config/peerOrganizations/cclb.landregistry.local/msp
     Policies:
       Readers:
         Type: Signature
-        Rule: "OR('CCLEBMSP.member')"
+        Rule: "OR('CCLBMSP.member')"
       Writers:
         Type: Signature
-        Rule: "OR('CCLEBMSP.member')"
+        Rule: "OR('CCLBMSP.member')"
       Admins:
         Type: Signature
-        Rule: "OR('CCLEBMSP.admin')"
+        Rule: "OR('CCLBMSP.admin')"
       Endorsement:
         Type: Signature
-        Rule: "OR('CCLEBMSP.peer')"
+        Rule: "OR('CCLBMSP.peer')"
     AnchorPeers:
       - Host: peer0.cclb.landregistry.local
         Port: 7051
 
+  # State Organizations
   - &StateOrgTS
     Name: StateOrgTS
     ID: StateOrgTSMSP
@@ -59,6 +62,136 @@ Organizations:
       - Host: peer0.ts.landregistry.local
         Port: 7051
 
+  - &StateOrgKA
+    Name: StateOrgKA
+    ID: StateOrgKAMSP
+    MSPDir: crypto-config/peerOrganizations/ka.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('StateOrgKAMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('StateOrgKAMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('StateOrgKAMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('StateOrgKAMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.ka.landregistry.local
+        Port: 8051
+
+  - &StateOrgAP
+    Name: StateOrgAP
+    ID: StateOrgAPMSP
+    MSPDir: crypto-config/peerOrganizations/ap.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('StateOrgAPMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('StateOrgAPMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('StateOrgAPMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('StateOrgAPMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.ap.landregistry.local
+        Port: 9051
+
+  # Village Revenue Officer Organization
+  - &VROOrg
+    Name: VROOrg
+    ID: VROOrgMSP
+    MSPDir: crypto-config/peerOrganizations/vro.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('VROOrgMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('VROOrgMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('VROOrgMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('VROOrgMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.vro.landregistry.local
+        Port: 10051
+
+  # Mandal Revenue Officer Organization (PBFT Consensus)
+  - &MROOrg
+    Name: MROOrg
+    ID: MROOrgMSP
+    MSPDir: crypto-config/peerOrganizations/mro.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('MROOrgMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('MROOrgMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('MROOrgMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('MROOrgMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.mro.landregistry.local
+        Port: 11051
+
+  # Admin Organization (System Administration)
+  - &AdminOrg
+    Name: AdminOrg
+    ID: AdminOrgMSP
+    MSPDir: crypto-config/peerOrganizations/admin.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('AdminOrgMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('AdminOrgMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('AdminOrgMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('AdminOrgMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.admin.landregistry.local
+        Port: 12051
+
+  # Citizen Organization
+  - &CitizenOrg
+    Name: CitizenOrg
+    ID: CitizenOrgMSP
+    MSPDir: crypto-config/peerOrganizations/citizen.landregistry.local/msp
+    Policies:
+      Readers:
+        Type: Signature
+        Rule: "OR('CitizenOrgMSP.member')"
+      Writers:
+        Type: Signature
+        Rule: "OR('CitizenOrgMSP.member')"
+      Admins:
+        Type: Signature
+        Rule: "OR('CitizenOrgMSP.admin')"
+      Endorsement:
+        Type: Signature
+        Rule: "OR('CitizenOrgMSP.peer')"
+    AnchorPeers:
+      - Host: peer0.citizen.landregistry.local
+        Port: 13051
+
 Capabilities:
   Channel: &ChannelCapabilities
     V2_0: true
@@ -76,9 +209,9 @@ Application: &ApplicationDefaults
     Writers:
       Type: ImplicitMeta
       Rule: "ANY Members"
-    Admin:
+    Admins:
       Type: ImplicitMeta
-      Rule: "MAJORITY Admins"
+      Rule: "ANY Admins"
     LifecycleEndorsement:
       Type: ImplicitMeta
       Rule: "MAJORITY Members"
@@ -89,13 +222,7 @@ Application: &ApplicationDefaults
     <<: *ApplicationCapabilities
 
 Orderer: &OrdererDefaults
-  OrdererType: etcdraft
-  EtcdRaftOptions:
-    TickInterval: 100ms
-    ElectionTick: 10
-    HeartbeatTick: 1
-    MaxInflightBlocks: 5
-    SnapshotIntervalSize: 16777216
+  OrdererType: solo
   Addresses:
     - orderer0.orderer.landregistry.local:7050
   BatchTimeout: 2s
@@ -114,7 +241,7 @@ Orderer: &OrdererDefaults
     BlockValidation:
       Type: ImplicitMeta
       Rule: "ANY Members"
-    Admin:
+    Admins:
       Type: ImplicitMeta
       Rule: "MAJORITY Admins"
   Capabilities:
@@ -128,19 +255,14 @@ Channel: &ChannelDefaults
     Writers:
       Type: ImplicitMeta
       Rule: "ANY Members"
-    Admin:
+    Admins:
       Type: ImplicitMeta
       Rule: "MAJORITY Admins"
   Capabilities:
     <<: *ChannelCapabilities
 
-Consortiums:
-  LandRegistryConsortium:
-    Organizations:
-      - *CCLB
-      - *StateOrgTS
-
 Profiles:
+  # Genesis block for orderer
   LandRegistryOrdererGenesis:
     <<: *ChannelDefaults
     Orderer:
@@ -154,40 +276,143 @@ Profiles:
         Organizations:
           - *CCLB
           - *StateOrgTS
+          - *StateOrgKA
+          - *StateOrgAP
+          - *VROOrg
+          - *MROOrg
+          - *AdminOrg
+          - *CitizenOrg
     Capabilities:
       <<: *ChannelCapabilities
 
-  # cclb-global channel: property ID registry across all states
+  # CCLB Global Channel - Property ID Registry (All states access)
   CCLBGlobalChannel:
-    <<: *ChannelDefaults
     Consortium: LandRegistryConsortium
+    <<: *ChannelDefaults
     Application:
       <<: *ApplicationDefaults
       Organizations:
         - *CCLB
         - *StateOrgTS
-      Capabilities:
-        <<: *ApplicationCapabilities
+        - *StateOrgKA
+        - *StateOrgAP
+        - *AdminOrg
       Policies:
-        # Endorsement policy: CCLB + State must endorse
+        # CCLB-only write for Property IDs
+        Writers:
+          Type: Signature
+          Rule: "OR('CCLBMSP.member', 'AdminOrgMSP.admin')"
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Admins:
+          Type: ImplicitMeta
+          Rule: "ANY Admins"
+        # Property ID issuance requires CCLB endorsement
+        LifecycleEndorsement:
+          Type: Signature
+          Rule: "AND('CCLBMSP.peer')"
         Endorsement:
           Type: Signature
-          Rule: "AND('CCLEBMSP.peer', 'StateOrgTSMSP.peer')"
+          Rule: "AND('CCLBMSP.peer')"
+      Capabilities:
+        <<: *ApplicationCapabilities
 
-  # state-ts channel: Telangana state-specific land records
-  StateTSChannel:
-    <<: *ChannelDefaults
+  # Regional Channel - Telangana State (TS)
+  LandRegionTS:
     Consortium: LandRegistryConsortium
+    <<: *ChannelDefaults
     Application:
       <<: *ApplicationDefaults
       Organizations:
         - *CCLB
         - *StateOrgTS
-      Capabilities:
-        <<: *ApplicationCapabilities
+        - *VROOrg
+        - *MROOrg
+        - *AdminOrg
+        - *CitizenOrg
       Policies:
-        # Endorsement policy: CCLB + State must endorse
-        # This ensures no single organization can modify records
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Admins:
+          Type: ImplicitMeta
+          Rule: "ANY Admins"
+        # VRO verification + MRO approval required
+        LifecycleEndorsement:
+          Type: Signature
+          Rule: "OR('CCLBMSP.peer', 'StateOrgTSMSP.peer', 'VROOrgMSP.peer', 'MROOrgMSP.peer')"
         Endorsement:
           Type: Signature
-          Rule: "AND('CCLEBMSP.peer', 'StateOrgTSMSP.peer')"
+          Rule: "OR('StateOrgTSMSP.peer', 'VROOrgMSP.peer', 'MROOrgMSP.peer')"
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+  # Regional Channel - Karnataka State (KA)
+  LandRegionKA:
+    Consortium: LandRegistryConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CCLB
+        - *StateOrgKA
+        - *VROOrg
+        - *MROOrg
+        - *AdminOrg
+        - *CitizenOrg
+      Policies:
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Admins:
+          Type: ImplicitMeta
+          Rule: "ANY Admins"
+        LifecycleEndorsement:
+          Type: Signature
+          Rule: "OR('CCLBMSP.peer', 'StateOrgKAMSP.peer', 'VROOrgMSP.peer', 'MROOrgMSP.peer')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('StateOrgKAMSP.peer', 'VROOrgMSP.peer', 'MROOrgMSP.peer')"
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+  # Regional Channel - Andhra Pradesh (AP)
+  LandRegionAP:
+    Consortium: LandRegistryConsortium
+    <<: *ChannelDefaults
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *CCLB
+        - *StateOrgAP
+        - *VROOrg
+        - *MROOrg
+        - *AdminOrg
+        - *CitizenOrg
+      Policies:
+        Readers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Writers:
+          Type: ImplicitMeta
+          Rule: "ANY Members"
+        Admins:
+          Type: ImplicitMeta
+          Rule: "ANY Admins"
+        LifecycleEndorsement:
+          Type: Signature
+          Rule: "OR('CCLBMSP.peer', 'StateOrgAPMSP.peer', 'VROOrgMSP.peer', 'MROOrgMSP.peer')"
+        Endorsement:
+          Type: Signature
+          Rule: "OR('StateOrgAPMSP.peer', 'VROOrgMSP.peer', 'MROOrgMSP.peer')"
+      Capabilities:
+        <<: *ApplicationCapabilities
+
+

@@ -12,23 +12,78 @@ OrdererOrgs:
       - Hostname: orderer2
         Disabled: true
     Users:
-      - Name: Admin
+      Count: 1
 
 PeerOrgs:
-  # Central Land Ledger Board - Root Authority
+  # Central Common Land Base (CCLB) - Root Authority
   - Name: CCLB
     Domain: cclb.landregistry.local
-    EnableNodeOUs: true
+    EnableNodeOUs: false
     Template:
       Count: 1
     Users:
-      Count: 1
+      Count: 2
 
-  # Telangana State Organization - Example State Org
+  # Telangana State Organization
   - Name: StateOrgTS
     Domain: ts.landregistry.local
+    EnableNodeOUs: false
+    Template:
+      Count: 1
+    Users:
+      Count: 2
+
+  # Karnataka State Organization (Additional region)
+  - Name: StateOrgKA
+    Domain: ka.landregistry.local
     EnableNodeOUs: true
     Template:
       Count: 1
     Users:
+      Count: 2
+
+  # Andhra Pradesh State Organization (Additional region)
+  - Name: StateOrgAP
+    Domain: ap.landregistry.local
+    EnableNodeOUs: true
+    Template:
       Count: 1
+    Users:
+      Count: 2
+
+  # Village Revenue Officer Organization
+  - Name: VROOrg
+    Domain: vro.landregistry.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 3
+
+  # Mandal Revenue Officer Organization
+  - Name: MROOrg
+    Domain: mro.landregistry.local
+    EnableNodeOUs: true
+    Template:
+      Count: 2  # Multiple peers for consensus
+    Users:
+      Count: 5  # Multiple MRO users for PBFT voting
+
+  # Admin Organization (System Administration)
+  - Name: AdminOrg
+    Domain: admin.landregistry.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 2
+
+  # Citizen Organization (For citizen applications)
+  - Name: CitizenOrg
+    Domain: citizen.landregistry.local
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+    Users:
+      Count: 10  # Support multiple citizen users
+
